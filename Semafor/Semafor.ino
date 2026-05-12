@@ -32,8 +32,8 @@ void loop() {
   digitalWrite(led2v, LOW);
   digitalWrite(led3v, LOW);
   digitalWrite(led1g, HIGH);
-  digitalWrite(led1g, HIGH);
-  digitalWrite(led1g, HIGH);
+  digitalWrite(led2g, HIGH);
+  digitalWrite(led3g, HIGH);
   delay(1000);
   digitalWrite(led1g, LOW);
   digitalWrite(led2g, LOW);
