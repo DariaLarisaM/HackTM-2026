@@ -1,88 +1,51 @@
-int led1v=2;
-int led2v=3;
-int led3v=4;
-int led1g=5;
-int led2g=6;
-int led3g=7;
-int led1r=8;
-int led2r=9;
-int led3r=10;
+int ns_v = 2; int ns_g = 4; int ns_r = 6;
+int ev_v = 3; int ev_g = 5; int ev_r = 7;
 
-// Adaugam o variabila ca sa tinem minte in ce stare e semaforul
-char stareCurenta = 'R'; 
-
-void AprindeVerde()
-{
-  digitalWrite(led1r, LOW);
-  digitalWrite(led2r, LOW);
-  digitalWrite(led3r, LOW);
-  digitalWrite(led1g, LOW);
-  digitalWrite(led2g, LOW);
-  digitalWrite(led3g, LOW);
-  digitalWrite(led1v, HIGH);
-  digitalWrite(led2v, HIGH);
-  digitalWrite(led3v, HIGH);
-}
-
-void AprindeGalben()
-{
-  digitalWrite(led1r, LOW);
-  digitalWrite(led2r, LOW);
-  digitalWrite(led3r, LOW);
-  digitalWrite(led1v, LOW);
-  digitalWrite(led2v, LOW);
-  digitalWrite(led3v, LOW);
-  digitalWrite(led1g, HIGH);
-  digitalWrite(led2g, HIGH);
-  digitalWrite(led3g, HIGH);
-}
-
-void AprindeRosu()
-{
-  digitalWrite(led1v, LOW);
-  digitalWrite(led2v, LOW);
-  digitalWrite(led3v, LOW);
-  digitalWrite(led1g, LOW);
-  digitalWrite(led2g, LOW);
-  digitalWrite(led3g, LOW);
-  digitalWrite(led1r, HIGH);
-  digitalWrite(led2r, HIGH);
-  digitalWrite(led3r, HIGH);
-}
+// Lasam starea goala ca sa forțăm semaforul să asculte de Python din prima secundă
+char axaCurentaVerde = 'X'; 
 
 void setup() {
-  Serial.begin(9600); // Initiem comunicarea cu laptopul
-  pinMode(led1v, OUTPUT);
-  pinMode(led2v, OUTPUT);
-  pinMode(led3v, OUTPUT);
-  pinMode(led1g, OUTPUT);
-  pinMode(led2g, OUTPUT);
-  pinMode(led3g, OUTPUT);
-  pinMode(led1r, OUTPUT);
-  pinMode(led2r, OUTPUT);
-  pinMode(led3r, OUTPUT);
+  Serial.begin(9600);
   
-  // La inceput, pornim macheta pe Rosu
-  AprindeRosu(); 
+  pinMode(ns_v, OUTPUT); pinMode(ns_g, OUTPUT); pinMode(ns_r, OUTPUT);
+  pinMode(ev_v, OUTPUT); pinMode(ev_g, OUTPUT); pinMode(ev_r, OUTPUT);
+
+  // La pornire, stingem tot pana ne zice AI-ul ce sa facem
+  digitalWrite(ns_v, LOW); digitalWrite(ns_g, LOW); digitalWrite(ns_r, LOW);
+  digitalWrite(ev_v, LOW); digitalWrite(ev_g, LOW); digitalWrite(ev_r, LOW);
+}
+
+void VerdePentruNordSud() {
+  if (axaCurentaVerde == 'E') { // Daca celalalt era verde, facem tranzitia corecta
+    digitalWrite(ev_v, LOW); digitalWrite(ev_g, HIGH); delay(2000);
+    digitalWrite(ev_g, LOW); digitalWrite(ev_r, HIGH); delay(1000);
+  }
+  // Aprindem Nord-Sud
+  digitalWrite(ns_r, LOW); digitalWrite(ns_v, HIGH);
+  digitalWrite(ev_v, LOW); digitalWrite(ev_g, LOW); digitalWrite(ev_r, HIGH);
+}
+
+void VerdePentruEstVest() {
+  if (axaCurentaVerde == 'N') { // Daca celalalt era verde, facem tranzitia
+    digitalWrite(ns_v, LOW); digitalWrite(ns_g, HIGH); delay(2000);
+    digitalWrite(ns_g, LOW); digitalWrite(ns_r, HIGH); delay(1000);
+  }
+  // Aprindem Est-Vest
+  digitalWrite(ev_r, LOW); digitalWrite(ev_v, HIGH);
+  digitalWrite(ns_v, LOW); digitalWrite(ns_g, LOW); digitalWrite(ns_r, HIGH);
 }
 
 void loop() {
-  // Verificam daca AI-ul de pe laptop ne-a trimis vreun mesaj prin cablul USB
   if (Serial.available() > 0) {
-    char comanda = Serial.read(); // Citim litera primita ('V' sau 'R')
+    char comanda = Serial.read();
 
-    // Daca AI-ul zice VERDE si noi suntem pe ROSU:
-    if (comanda == 'V' && stareCurenta != 'V') {
-      AprindeVerde();
-      stareCurenta = 'V'; // Actualizam starea
+    if (comanda == 'N' && axaCurentaVerde != 'N') {
+      VerdePentruNordSud();
+      axaCurentaVerde = 'N';
     }
-    // Daca AI-ul zice ROSU si noi suntem pe VERDE:
-    else if (comanda == 'R' && stareCurenta != 'R') {
-      // Facem tranzitia eleganta ca la un semafor real
-      AprindeGalben();
-      delay(2000); // Tine galbenul aprins 2 secunde
-      AprindeRosu();
-      stareCurenta = 'R'; // Actualizam starea
+    else if (comanda == 'E' && axaCurentaVerde != 'E') {
+      VerdePentruEstVest();
+      axaCurentaVerde = 'E';
     }
   }
 }

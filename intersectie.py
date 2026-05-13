@@ -7,16 +7,15 @@ import time
 # 1. Incarcam modelul AI
 model = YOLO('yolov8n.pt')
 
-# 2. Deschidem camera AUXILIARA (Index 1). 
-# Daca nu merge, pune 0 inapoi pentru cea de la laptop.
-cap = cv2.VideoCapture(1)
+# 2. Deschidem camera
+cap = cv2.VideoCapture(0) # Daca ai camera pe USB, pune 1
 
 # 3. Definim zona mare de detectie
 roi_banda_1 = np.array([[50, 50], [590, 50], [590, 430], [50, 430]], np.int32)
 
-# 4. Conectarea la Arduino (Protejata la erori)
+# 4. Conectarea la Arduino
 try:
-    # Aici pui COM-ul tau corect (ex: 'COM5')
+    # Atentie sa fie COM-ul corect!
     arduino = serial.Serial('COM3', 9600, timeout=0.1, write_timeout=0.1)
     time.sleep(2)
     print("✅ Conectat cu succes la Arduino!")
@@ -24,9 +23,12 @@ except Exception as e:
     arduino = None
     print("⚠️ Arduino NU este conectat. Rulam FARA hardware (doar video).")
 
-# Variabile pentru memorie/stabilizare ca sa nu palpaie semaforul
-stare_curenta = 'R'
+# --- Setarile pentru cronometru si logica ---
+stare_curenta = 'E'
 cadre_confirmare = 0
+timp_ultima_schimbare = time.time()
+timp_verde_normal = 10.0 # Cate secunde sta normal pe verde
+timp_verde_minim = 4.0   # Timpul minim inainte sa il poata "taia" AI-ul
 
 print("Apasă tasta 'q' pe fereastra video pentru a închide camera.")
 
@@ -35,7 +37,7 @@ while cap.isOpened():
     if not success:
         break
 
-    # Rulam detectia (0=persoana, 67=telefon)
+    # Rulam detectia AI
     results = model(frame, stream=True, classes=[0, 67])
     masini_in_zona = 0
 
@@ -59,42 +61,62 @@ while cap.isOpened():
     cv2.polylines(frame, [roi_banda_1], isClosed=True, color=(255, 255, 0), thickness=2)
     cv2.putText(frame, f"Obiecte in zona: {masini_in_zona}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
-   # 5. Logica Semforului
-    stare_noua = 'V' if masini_in_zona >= 2 else 'R'
+    # 5. Logica: Timer Clasic + Inteligenta Artificiala
+    timp_curent = time.time()
+    timp_trecut = timp_curent - timp_ultima_schimbare
+    stare_dorita = stare_curenta
+    
+    # Cazul 1: Suntem pe ROSU pt axa camerei (Est-Vest are verde)
+    if stare_curenta == 'E':
+        if timp_trecut >= timp_verde_normal:
+            stare_dorita = 'N' 
+        elif masini_in_zona >= 2 and timp_trecut >= timp_verde_minim:
+            stare_dorita = 'N' 
+            cv2.putText(frame, "AI OVERRIDE: Aglomeratie! Fortez Verde!", (20, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
+            
+    # Cazul 2: Suntem pe VERDE pt axa camerei (Nord-Sud are verde)
+    elif stare_curenta == 'N':
+        if timp_trecut >= timp_verde_normal:
+            stare_dorita = 'E' 
+        elif masini_in_zona == 0 and timp_trecut >= timp_verde_minim:
+            stare_dorita = 'E' 
+            cv2.putText(frame, "AI OVERRIDE: Strada libera, cedez prioritatea!", (20, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
 
-    # Stabilizarea imaginii pe ecran (sa nu palpaie textul)
-    if stare_noua != stare_curenta:
+    # Stabilizarea semnalului AI
+    if stare_dorita != stare_curenta:
         cadre_confirmare += 1
         if cadre_confirmare >= 5:
-            stare_curenta = stare_noua
+            stare_curenta = stare_dorita
             cadre_confirmare = 0
+            timp_ultima_schimbare = timp_curent 
+            print(f">>> TRIMIT COMANDA: {stare_curenta} <<<") 
     else:
         cadre_confirmare = 0
 
-    # !!! MODIFICAREA ESTE AICI !!!
-    # Trimitem continuu starea către Arduino, la fiecare cadru video.
-    # Arduino se apara singur de "spam" datorita variabilei sale interne stareCurenta.
+    # Trimitem starea către Arduino
     if arduino is not None:
         try:
-            if stare_curenta == 'V':
-                arduino.write(b'V')
+            if stare_curenta == 'N':
+                arduino.write(b'N')
             else:
-                arduino.write(b'R')
+                arduino.write(b'E')
         except Exception:
-            pass # Ignoram erorile temporare de cablu
+            pass 
 
-    # Scriem pe ecran statusul
-    if stare_curenta == 'V':
-        cv2.putText(frame, "SEMAFOR: VERDE", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
+    # Afisare timer pe ecran (nu il lasam sa scada sub 0)
+    timp_ramas = max(0, int(timp_verde_normal - timp_trecut))
+    
+    if stare_curenta == 'N':
+        cv2.putText(frame, f"AXA NORD-SUD: VERDE ({timp_ramas}s)", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
     else:
-        cv2.putText(frame, "SEMAFOR: ROSU", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-    # Afisam fereastra
-    cv2.imshow("UrbanPulse - AI Video", frame)
+        cv2.putText(frame, f"AXA EST-VEST: VERDE ({timp_ramas}s)", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 3)
+
+    # Liniile care lipseau pentru afisarea ferestrei!
+    cv2.imshow("UrbanPulse - AI Hybrid Traffic", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# Curatam la final
 if arduino is not None:
     arduino.close()
 cap.release()
