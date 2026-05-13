@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>City Glow — Smart traffic for the city</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="browser">
+
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 19h16"/>
+              <path d="M7 19V9l5-4 5 4v10"/>
+              <path d="M10 12h4"/>
+              <path d="M12 8v8"/>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <strong>City Glow</strong>
+            <span>smart city dashboard</span>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <a href="#">Home</a>
+          <a href="#live-map">Hartă live</a>
+                    <a href="#dashboard">Dashboard</a>
+        </nav>
+
+        <div class="nav-actions">
+          <button class="ghost-btn" onclick="openLogin('citizen')">Cetățean</button>
+          <button class="solid-btn" onclick="openLogin('institution')">Instituție</button>
+        </div>
+      </header>
+
+      <div class="hero">
+        <div class="kicker"><span></span> Timișoara Smart City demo</div>
+        <h1><strong>City Glow,</strong><br>smart traffic<br>for the city.</h1>
+        <p>Platformă pentru siguranță urbană și trafic inteligent, gândită pentru cetățeni și instituții, cu hartă live și status de intersecție în timp real.</p>
+
+        <div class="hero-actions">
+          <button class="arrow-btn" onclick="scrollToSection('live-map')">→</button>
+          <button class="ghost-btn" onclick="scrollToSection('dashboard')">Vezi dashboard</button>
+        </div>
+          </div>
+        </div>
+      </div>
+
+
+        <div class="hero-light" aria-hidden="true">
+          <div class="light-stage">
+            <div class="pole"></div>
+            <div class="light-box">
+              <div class="bulb red active" data-hero-red></div>
+              <div class="bulb yellow"></div>
+              <div class="bulb green" data-hero-green></div>
+            </div>
+    </section>
+
+    <section class="section" id="live-map">
+      <div class="scroll-head reveal">
+        <div>
+          <div class="section-label">live city layer</div>
+          <h2 class="slide-text"><span>Harta Timișoarei, dar mai glow.</span></h2>
+        </div>
+        <p>Harta se sincronizează cu procesarea video și cu semafoarele de pe macheta Arduino.</p>
+      </div>
+
+      <div class="dashboard reveal">
+        <article class="glass-card map-card">
+          <div class="card-top">
+            <div>
+              <h3>Intersecție în cruce — Timișoara</h3>
+              <p id="connectionStatus">Se încearcă conectarea la procesarea video...</p>
+            </div>
+            <div class="live" id="liveBadge">OFFLINE</div>
+          </div>
+
+          <div class="timisoara-map cross-map">
+            <div class="river">Râul Bega</div>
+            <div class="road-cross road-horizontal"><span>Bd. Take Ionescu</span></div>
+            <div class="road-cross road-vertical"><span>Str. Michelangelo</span></div>
+            <div class="center-box"></div>
+            <div class="crosswalk cw-top"></div>
+            <div class="crosswalk cw-bottom"></div>
+            <div class="crosswalk cw-left"></div>
+            <div class="crosswalk cw-right"></div>
+
+            <div class="traffic-light-map light-a" id="mapLightA">
+              <i class="mini red active"></i><i class="mini yellow"></i><i class="mini green"></i>
+            </div>
+            <div class="traffic-light-map light-b" id="mapLightB">
+              <i class="mini red"></i><i class="mini yellow"></i><i class="mini green active"></i>
+            </div>
+
+            <div class="car car-1"></div><div class="car car-2"></div><div class="car car-3"></div>
+            <div class="car car-4"></div><div class="car car-5"></div>
+            <div class="incident-pin" id="incidentPin">!</div>
+            <div class="area-label label-centru">Centru</div><div class="area-label label-complex">Complex</div>
+            <div class="area-label label-fabric">Fabric</div><div class="area-label label-iosefin">Iosefin</div>
+          </div>
+
+          <div class="map-footer">
+            <div class="legend">
+              <div><i class="red"></i>incident</div>
+              <div><i class="orange"></i>aglomerație</div>
+              <div><i class="dash"></i>rută ocolitoare</div>
+            </div>
+          </div>
+        </article>
+
+        <aside class="side" id="dashboard">
+          <article class="glass-card alert-panel">
+            <h3><strong>Incident</strong> detectat</h3>
+
+            <div class="incident-box">
+              <p id="incidentText">Așteptăm date live din algoritmul video. Când camera detectează trafic ridicat, platforma actualizează automat starea intersecției.</p>
+
+              <div class="status-row">
+                <div class="status-pill">Alertă activă</div>
+                <div class="status-pill">Status echipaj: în drum</div>
+              </div>
+
+              <div class="incident-location"><span>!</span> <b id="incidentLocation">Intersecție monitorizată — Timișoara</b></div>
+            </div>
+
+            <div class="locked-note" id="lockedNote">
+              Pentru a trimite notificări trebuie să intri în platformă ca cetățean sau instituție.
+            </div>
+
+            <div class="role-badge" id="roleBadge">Conectat</div>
+
+            <button class="notify-btn" id="notifyButton" onclick="sendIncidentNotification()">Trimite notificare</button>
+
+            <div class="institution-tools" id="institutionTools">
+              <h3 style="font-size:22px;letter-spacing:-.7px;margin-top:0;"><strong>Dashboard</strong> instituție</h3>
+              <p style="margin-top:8px;color:rgba(255,255,255,.78);font-size:14px;line-height:1.5;">
+                Incidente active, status de echipaj și control asupra logicii de trafic.
+              </p>
+
+              <div class="tool-grid">
+                <div class="tool-card"><b id="activeIncidents">0</b><span>incidente active</span></div>
+                <div class="tool-card"><b id="crewMini">standby</b><span>status echipaj</span></div>
+                <div class="tool-card"><b id="syncMini">2/2</b><span>semafoare sincronizate</span></div>
+                <div class="tool-card"><b id="logicMini">video</b><span>logică trafic</span></div>
+              </div>
+
+              <div class="traffic-control">
+                <button class="control-btn" onclick="forceGreenWave()">Activează undă verde</button>
+                <button class="control-btn secondary" onclick="showToast('Logica de trafic a fost actualizată.')">Actualizează trafic</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="glass-card accounts">
+            <div class="card-top">
+              <div>
+                <h3>Acces în platformă</h3>
+                <p>Alege interfața potrivită pentru tipul de utilizator.</p>
+              </div>
+            </div>
+
+            <div class="account-grid">
+              <div class="account" onclick="openLogin('citizen')">
+                <div class="account-head">
+                  <div class="account-icon">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.2-4 4.4-6 8-6s6.8 2 8 6"/></svg>
+                  </div>
+                  <b>Cetățean</b>
+                </div>
+                <p>Vezi harta live, zonele aglomerate, incidentele anonimizate și traseele ocolitoare recomandate.</p>
+              </div>
+
+              <div class="account" onclick="openLogin('institution')">
+                <div class="account-head">
+                  <div class="account-icon">
+                    <svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M6 20V8l6-3 6 3v12"/><path d="M9 11h1M14 11h1M9 15h1M14 15h1"/></svg>
+                  </div>
+                  <b>Instituție</b>
+                </div>
+                <p>Primești incidente active, status de echipaj și control asupra logicii de trafic în dashboard.</p>
+              </div>
+            </div>
+          </article>
+        </aside>
+      </div>
+    </section>
+
+
+    <div class="notification-stack" id="notificationStack"></div>
+
+    <div class="login-modal" id="loginModal">
+      <div class="login-box">
+        <button class="close" onclick="closeLogin()">×</button>
+        <h2><strong>Login</strong> glow</h2>
+        <p id="loginInfo">Intră în platformă ca cetățean sau instituție. Pentru demo, datele nu sunt salvate.</p>
+
+        <div class="tabs">
+          <button class="active" id="citizenTab" onclick="selectType('citizen')">Cetățean</button>
+          <button id="institutionTab" onclick="selectType('institution')">Instituție</button>
+        </div>
+
+        <form class="form" id="loginForm" onsubmit="fakeLogin(event)">
+          <div class="field">
+            <label>Email</label>
+            <input id="loginEmail" type="email" placeholder="nume@email.com" required>
+          </div>
+          <div class="field">
+            <label>Parolă</label>
+            <input id="loginPassword" type="password" placeholder="••••••••" required>
+          </div>
+          <button class="submit" id="submitBtn">Intră ca cetățean</button>
+          <div class="login-error" id="loginError">Email sau parolă greșită pentru tipul de cont selectat.</div>
+        </form>
+
+        <form class="create-form" id="createForm" onsubmit="createCitizenAccount(event)">
+          <div class="field">
+            <label>Nume</label>
+            <input id="createName" type="text" placeholder="Numele tău" required>
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input id="createEmail" type="email" placeholder="nume@email.com" required>
+          </div>
+          <div class="field">
+            <label>Parolă</label>
+            <input id="createPassword" type="password" placeholder="minim 4 caractere" minlength="4" required>
+          </div>
+          <button class="submit" type="submit">Creează cont cetățean</button>
+          <button class="back-login" type="button" onclick="showLoginForm()">Înapoi la login</button>
+          <div class="login-error" id="createError"></div>
+        </form>
+
+        <div class="create-switch" id="createSwitch">
+          Nu ai cont de cetățean?
+          <button type="button" onclick="showCreateForm()">Creează cont</button>
+        </div>      </div>
+    </div>
+
+    <div class="toast" id="toast">Ai intrat în platformă.</div>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
