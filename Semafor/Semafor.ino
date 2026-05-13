@@ -8,6 +8,45 @@ int led1r=8;
 int led2r=9;
 int led3r=10;
 
+void AprindeVerde()
+{
+  digitalWrite(led1r, LOW);
+  digitalWrite(led2r, LOW);
+  digitalWrite(led3r, LOW);
+  digitalWrite(led1g, LOW);
+  digitalWrite(led2g, LOW);
+  digitalWrite(led3g, LOW);
+  digitalWrite(led1v, HIGH);
+  digitalWrite(led2v, HIGH);
+  digitalWrite(led3v, HIGH);
+}
+
+void AprindeGalben()
+{
+  digitalWrite(led1r, LOW);
+  digitalWrite(led2r, LOW);
+  digitalWrite(led3r, LOW);
+  digitalWrite(led1v, LOW);
+  digitalWrite(led2v, LOW);
+  digitalWrite(led3v, LOW);
+  digitalWrite(led1g, HIGH);
+  digitalWrite(led2g, HIGH);
+  digitalWrite(led3g, HIGH);
+}
+
+void AprindeRosu()
+{
+  digitalWrite(led1v, LOW);
+  digitalWrite(led2v, LOW);
+  digitalWrite(led3v, LOW);
+  digitalWrite(led1g, LOW);
+  digitalWrite(led2g, LOW);
+  digitalWrite(led3g, LOW);
+  digitalWrite(led1r, HIGH);
+  digitalWrite(led2r, HIGH);
+  digitalWrite(led3r, HIGH);
+}
+
 void setup() {
   pinMode(led1v, OUTPUT);
   pinMode(led2v, OUTPUT);
@@ -21,25 +60,5 @@ void setup() {
 }
 
 void loop() {
-  digitalWrite(led1r, LOW);
-  digitalWrite(led2r, LOW);
-  digitalWrite(led3r, LOW);
-  digitalWrite(led1v, HIGH);
-  digitalWrite(led2v, HIGH);
-  digitalWrite(led3v, HIGH);
-  delay(1000);
-  digitalWrite(led1v, LOW);
-  digitalWrite(led2v, LOW);
-  digitalWrite(led3v, LOW);
-  digitalWrite(led1g, HIGH);
-  digitalWrite(led2g, HIGH);
-  digitalWrite(led3g, HIGH);
-  delay(1000);
-  digitalWrite(led1g, LOW);
-  digitalWrite(led2g, LOW);
-  digitalWrite(led3g, LOW);
-  digitalWrite(led1r, HIGH);
-  digitalWrite(led2r, HIGH);
-  digitalWrite(led3r, HIGH);
-  delay(1000);
+  
 }
