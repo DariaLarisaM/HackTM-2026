@@ -8,6 +8,9 @@ int led1r=8;
 int led2r=9;
 int led3r=10;
 
+// Adaugam o variabila ca sa tinem minte in ce stare e semaforul
+char stareCurenta = 'R'; 
+
 void AprindeVerde()
 {
   digitalWrite(led1r, LOW);
@@ -48,6 +51,7 @@ void AprindeRosu()
 }
 
 void setup() {
+  Serial.begin(9600); // Initiem comunicarea cu laptopul
   pinMode(led1v, OUTPUT);
   pinMode(led2v, OUTPUT);
   pinMode(led3v, OUTPUT);
@@ -57,8 +61,28 @@ void setup() {
   pinMode(led1r, OUTPUT);
   pinMode(led2r, OUTPUT);
   pinMode(led3r, OUTPUT);
+  
+  // La inceput, pornim macheta pe Rosu
+  AprindeRosu(); 
 }
 
 void loop() {
-  
+  // Verificam daca AI-ul de pe laptop ne-a trimis vreun mesaj prin cablul USB
+  if (Serial.available() > 0) {
+    char comanda = Serial.read(); // Citim litera primita ('V' sau 'R')
+
+    // Daca AI-ul zice VERDE si noi suntem pe ROSU:
+    if (comanda == 'V' && stareCurenta != 'V') {
+      AprindeVerde();
+      stareCurenta = 'V'; // Actualizam starea
+    }
+    // Daca AI-ul zice ROSU si noi suntem pe VERDE:
+    else if (comanda == 'R' && stareCurenta != 'R') {
+      // Facem tranzitia eleganta ca la un semafor real
+      AprindeGalben();
+      delay(2000); // Tine galbenul aprins 2 secunde
+      AprindeRosu();
+      stareCurenta = 'R'; // Actualizam starea
+    }
+  }
 }
