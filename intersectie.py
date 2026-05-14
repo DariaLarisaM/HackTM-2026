@@ -87,7 +87,7 @@ while cap.isOpened():
     # Comunicare Arduino
     if arduino is not None:
         try:
-            arduino.write('n' if stare_curenta == '1' else 'e')
+            arduino.write(b'N' if stare_curenta == '1' else b'E')
         except Exception:
             pass 
 
