@@ -1,7 +1,8 @@
 int ns_v = 2; int ns_g = 4; int ns_r = 6;
 int ev_v = 3; int ev_g = 5; int ev_r = 7;
 
-// Lasam starea goala ca sa forțăm semaforul să asculte de Python din prima secundă
+// Punem 'X' ca stare neutra. Cand Python va cere prima oara 'N' sau 'E', 
+// conditia (comanda != axaCurentaVerde) va fi indeplinita si se vor aprinde.
 char axaCurentaVerde = 'X'; 
 
 void setup() {
@@ -10,7 +11,7 @@ void setup() {
   pinMode(ns_v, OUTPUT); pinMode(ns_g, OUTPUT); pinMode(ns_r, OUTPUT);
   pinMode(ev_v, OUTPUT); pinMode(ev_g, OUTPUT); pinMode(ev_r, OUTPUT);
 
-  // La pornire, stingem tot pana ne zice AI-ul ce sa facem
+  // La pornire, stingem tot
   digitalWrite(ns_v, LOW); digitalWrite(ns_g, LOW); digitalWrite(ns_r, LOW);
   digitalWrite(ev_v, LOW); digitalWrite(ev_g, LOW); digitalWrite(ev_r, LOW);
 }
@@ -39,7 +40,7 @@ void loop() {
   if (Serial.available() > 0) {
     char comanda = Serial.read();
 
-    if (comanda == 'N' && axaCurentaVerde != 'N') {
+    if (comanda == 'N' && axaCurentaVerde != 'N'){
       VerdePentruNordSud();
       axaCurentaVerde = 'N';
     }
