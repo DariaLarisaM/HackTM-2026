@@ -5,7 +5,7 @@ import serial
 import time
 
 model = YOLO('yolov8n.pt')
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 roi_banda_1 = np.array([[10, 50], [300, 50], [300, 430], [10, 430]], np.int32)   
 roi_banda_2 = np.array([[340, 50], [630, 50], [630, 430], [340, 430]], np.int32) 
