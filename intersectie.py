@@ -10,7 +10,7 @@ from collections import defaultdict
 import io
 
 model = YOLO('yolov8n.pt')
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(2)
 
 # Zonele tale
 roi_banda_1 = np.array([[10, 50], [280, 50], [280, 430], [10, 430]], np.int32)   
