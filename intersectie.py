@@ -9,6 +9,8 @@ import threading
 from collections import defaultdict
 import io
 
+# 1. Incarcam modelul YOLO (varianta Small, mai buna pt jucarii)
+# Incarcam modelul Nano, care este cel mai rapid pentru CPU
 model = YOLO('yolov8n.pt')
 cap = cv2.VideoCapture(2)
 
@@ -125,6 +127,19 @@ while cap.isOpened():
     if not success:
         break
 
+    timp_curent = time.time()
+    
+    # 2. Aici e locul corect pentru apelarea tracking-ului:
+    # Folosim setari agresive pentru viteza si detecții slabe
+    results = model.track(
+        frame, 
+        persist=True, 
+        stream=True, 
+        conf=0.10,               # Coboram si mai mult
+        iou=0.5,                 # Permitem suprapuneri mai mari ale box-urilor
+        vid_stride=2,            # TRUC: Proceseaza doar 1 din 2 cadre! Dubleaza FPS-ul automat.
+        tracker="botsort.yaml"   # Folosim BotSort, e mai bun pentru obiecte care stau pe loc sau au scor mic
+    )
     cadru_curent_global = frame.copy() # Salvăm o copie curată pentru buffer-ul circular
     timp_curent = time.time()
     results = model.track(frame, persist=True, stream=True, classes=[0, 67])
