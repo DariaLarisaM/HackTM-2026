@@ -77,7 +77,7 @@
         .dot.green { background-color: #00e676; }
         .dot.active { opacity: 1; box-shadow: 0 0 12px currentColor; }
 
-        /* ALERTE INCIDENTE (Design unitar cu altele colegei) */
+        /* ALERTE INCIDENTE */
         #incidentPin { 
             display: none; 
             background: rgba(255, 77, 77, 0.15); 
@@ -97,7 +97,6 @@
         .map-wrapper { flex: 1; border-radius: 32px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.15); position: relative; }
         #map { width: 100%; height: 100%; }
 
-        /* OVERLAY PE HARTĂ PENTRU ASPECT DARK PROFESIONAL */
         .map-wrapper::after {
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
@@ -132,13 +131,13 @@
             <div class="glass-card">
                 <h3>Control Semaforizare</h3>
                 <div class="light-row">
-                    <span style="font-size: 13px;">Bd. Take Ionescu</span>
+                    <span style="font-size: 13px;">Bd. Eroilor de la Tisa</span>
                     <div id="mapLightA" class="light-container">
                         <i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>
                     </div>
                 </div>
                 <div class="light-row">
-                    <span style="font-size: 13px;">Str. Michelangelo</span>
+                    <span style="font-size: 13px;">Str. Cluj</span>
                     <div id="mapLightB" class="light-container">
                         <i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>
                     </div>
@@ -171,19 +170,19 @@
     </div>
 
     <script>
-        // --- INIȚIALIZARE HARTĂ DARK MODE ---
-        const map = L.map('map', { zoomControl: false }).setView([45.753, 21.232], 16);
+        // --- INIȚIALIZARE HARTĂ LA JUDEȚEAN ---
+        const coords = [45.74534, 21.23590];
+        const map = L.map('map', { zoomControl: false }).setView(coords, 17);
 
-        // Stil Dark Profesional pentru hartă (CartoDB Dark)
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '© City Glow UrbanPulse'
         }).addTo(map);
 
-        const intersectionMarker = L.circle([45.753, 21.232], {
+        const intersectionMarker = L.circle(coords, {
             color: 'rgba(255,255,255,0.3)',
             fillColor: '#ffffff',
             fillOpacity: 0.2,
-            radius: 30
+            radius: 35
         }).addTo(map);
 
         // --- CONEXIUNE WEBSOCKET ---
@@ -201,8 +200,8 @@
 
             // Update text trafic
             document.getElementById("incidentText").innerHTML = 
-                `Banda 1: <span style="color:#00e676; font-weight:bold">${data.objects_b1}</span> vehicule<br>` +
-                `Banda 2: <span style="color:#00e676; font-weight:bold">${data.objects_b2}</span> vehicule`;
+                `Banda 1: <span style="color:#00e676; font-weight:bold">${data.objects_b1 || 0}</span> vehicule<br>` +
+                `Banda 2: <span style="color:#00e676; font-weight:bold">${data.objects_b2 || 0}</span> vehicule`;
 
             // Update Semafoare
             if (data.state === "1") {
@@ -233,6 +232,7 @@
         socket.onclose = function() {
             document.getElementById("liveBadge").innerText = "AI Offline";
             document.getElementById("liveBadge").style.backgroundColor = "rgba(255, 77, 77, 0.2)";
+            document.getElementById("liveBadge").style.borderColor = "rgba(255, 77, 77, 0.4)";
             document.getElementById("liveBadge").style.color = "#ff4d4d";
         };
     </script>
