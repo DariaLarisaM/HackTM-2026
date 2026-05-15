@@ -11,7 +11,7 @@ import json
 import sqlite3
 
 # ================= CONFIGURĂRI =================
-PORT_ARDUINO = 'COM3'  # Schimbă cu portul tău (ex: '/dev/ttyUSB0')
+PORT_ARDUINO = 'COM3'  # Schimbă cu portul tău dacă e nevoie
 WEBSOCKET_PORT = 8765
 
 # ROIs (Regiuni de Interes)
@@ -152,24 +152,20 @@ def start_ws_server():
 
 # ================= 3. MODUL VIDEO & LOGICĂ PRINCIPALĂ =================
 if __name__ == "__main__":
-    # 1. Inițializăm Baza de Date prima oară
     init_db()
     print("✅ Baza de date inițializată.")
 
-    # 2. Pornim firele de execuție secundare
     threading.Thread(target=start_audio_thread, daemon=True).start()
     threading.Thread(target=start_ws_server, daemon=True).start()
     print("✅ Servere Audio și Web pornite! Se încarcă AI-ul Video...")
 
     model = YOLO('yolov8n.pt')
-
-    # ATENȚIE: Dacă nu se deschide camera, schimbă "0" în "1" sau "0, cv2.CAP_DSHOW"
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     try:
         arduino = serial.Serial(PORT_ARDUINO, 9600, timeout=0.1)
         time.sleep(2)
-        print("✅ Conectat la Arduino!")
+        print("✅ Conectat la Arduino pe", PORT_ARDUINO)
     except Exception:
         arduino = None
         print("⚠️ Arduino neconectat. Rulăm în mod Simulare.")
@@ -194,37 +190,4 @@ if __name__ == "__main__":
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 elif cv2.pointPolygonTest(roi_banda_2, (cx, cy), False) > 0:
                     masini_b2 += 1
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 165, 0), 2)
-                elif cv2.pointPolygonTest(roi_centru, (cx, cy), False) > 0:
-                    masini_centru += 1
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-                    # --- LOGICA DE SCOR ACCIDENT ---
-        video_score = 80.0 if masini_centru > 0 else 0.0
-        scor_total_accident = (audio_score * 0.6) + (video_score * 0.4)
-
-        if scor_total_accident > 70.0:
-            incident_activ = True
-            mesaj_trafic = "🚨 ACCIDENT DETECTAT! Evitați zona."
-            salveaza_incident_db(mesaj_trafic, audio_score, video_score, scor_total_accident)
-        else:
-            incident_activ = False
-            mesaj_trafic = "Trafic normal"
-
-        # --- LOGICA DE TRAFIC & SEMAFOR ---
-        secunde_trecute = time.time() - timp_ultima_schimbare
-        stare_noua = stare_curenta
-
-        if secunde_trecute >= TIMP_VERDE_MAXIM:
-            stare_noua = 'E' if stare_curenta == 'N' else 'N'
-        elif secunde_trecute >= TIMP_VERDE_MINIM:
-            if stare_curenta == 'N' and masini_b2 > 3:
-                stare_noua = 'E'
-                mesaj_trafic = "⚠️ Aglomerație E-V. Rută ocolitoare sugerată."
-                salveaza_trafic_db("Est-Vest", "Aglomerație detectată (>3 mașini)")
-            elif stare_curenta == 'E' and masini_b1 > 3:
-                stare_noua = 'N'
-                mesaj_trafic = "⚠️ Aglomerație N-S. Rută ocolitoare sugerată."
-                salveaza_trafic_db("Nord-Sud", "Aglomerație detectată (>3 mașini)")
-
-        if stare_noua != stare_curent
+                    cv2.rectangle(frame, (x1, y1), (x2, y2
