@@ -9,7 +9,7 @@ import threading
 from collections import defaultdict
 
 model = YOLO('yolov8n.pt')
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 # Am reajustat puțin coordonatele pentru a face loc "pătratului" din centru
 roi_banda_1 = np.array([[10, 50], [280, 50], [280, 430], [10, 430]], np.int32)   
@@ -168,12 +168,7 @@ while cap.isOpened():
     # --- Comunicare Arduino ---
     if arduino is not None:
         try:
-            if stare_sistem == '1':
-                arduino.write(b'N') # Verde pe Banda 1
-            elif stare_sistem == '2':
-                arduino.write(b'E') # Verde pe Banda 2
-            elif stare_sistem == 'BLOCAT':
-                arduino.write(b'B') # Ambele Roșu (Pentru a goli intersecția)
+            arduino.write(b'N' if stare_curenta == '1' else b'E')
         except Exception:
             pass 
 
@@ -201,3 +196,9 @@ if arduino is not None:
     arduino.close()
 cap.release()
 cv2.destroyAllWindows()
+
+
+
+
+
+
