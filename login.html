@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UrbanPulse - Autentificare</title>
+    <title>City Glow - Autentificare</title>
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
         body {
-            background-color: #121212;
+            /* Fundalul mov închis din marginea site-ului vostru */
+            background-color: #261132;
+            background-image: radial-gradient(circle at top right, #3d1b54, #261132);
             color: white;
             display: flex;
             justify-content: center;
@@ -22,23 +24,56 @@
         }
 
         .login-box {
-            background-color: #1e1e1e;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            /* Containerul "Glassmorphism" similar cu cardurile din dreapta (Alerte/Rută) */
+            background-color: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 50px 40px;
+            border-radius: 32px;
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
             text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
         }
 
-        .login-box h2 {
-            margin-bottom: 25px;
-            font-weight: 600;
+        /* Recreerea logo-ului din stânga sus */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .logo-circle {
+            background-color: rgba(255, 255, 255, 0.2);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
             letter-spacing: 1px;
         }
 
-        .login-box h2 span {
-            color: #00e676; /* Accent verde pentru "Pulse" */
+        .logo-text {
+            text-align: left;
+        }
+
+        .logo-text h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .logo-text p {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.6);
         }
 
         .input-group {
@@ -50,101 +85,107 @@
             display: block;
             margin-bottom: 8px;
             font-size: 14px;
-            color: #aaa;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.8);
+            margin-left: 5px;
         }
 
         .input-group input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #333;
-            background-color: #2a2a2a;
+            padding: 16px 20px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: white;
-            border-radius: 6px;
+            border-radius: 16px;
+            font-size: 15px;
             outline: none;
-            transition: border-color 0.3s;
+            transition: border-color 0.3s, background-color 0.3s;
         }
 
         .input-group input:focus {
-            border-color: #00e676;
+            border-color: rgba(255, 255, 255, 0.5);
+            background-color: rgba(0, 0, 0, 0.3);
         }
 
+        /* Butonul de login exact ca butonul vostru "Primește notificare" */
         button {
             width: 100%;
-            padding: 12px;
-            background-color: #00e676;
-            color: #121212;
-            border: none;
-            border-radius: 6px;
+            padding: 16px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50px; /* Colțuri rotunjite masiv (pill shape) */
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            transition: background-color 0.3s;
-            margin-top: 10px;
+            transition: all 0.3s ease;
+            margin-top: 20px;
         }
 
         button:hover {
-            background-color: #00c853;
+            background-color: white;
+            color: #5d2570; /* Movul tematic la hover */
         }
 
         .error-message {
-            color: #ff4d4d;
-            background-color: rgba(255, 77, 77, 0.1);
-            padding: 10px;
-            border-radius: 6px;
-            margin-top: 15px;
+            color: #ff6b6b;
+            background-color: rgba(255, 107, 107, 0.1);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 20px;
             font-size: 14px;
-            display: none; /* Ascuns implicit */
+            display: none;
         }
     </style>
 </head>
 <body>
 
     <div class="login-box">
-        <h2>Urban<span>Pulse</span></h2>
+        
+        <div class="logo-container">
+            <div class="logo-circle">CG</div>
+            <div class="logo-text">
+                <h1>City Glow</h1>
+                <p>Portal Autentificare</p>
+            </div>
+        </div>
         
         <form id="loginForm">
             <div class="input-group">
-                <label for="username">Utilizator</label>
-                <input type="text" id="username" placeholder="ex: cetatean sau politie" required>
+                <label for="username">Nume utilizator</label>
+                <input type="text" id="username" placeholder="ex: cetatean sau politie" required autocomplete="off">
             </div>
             
             <div class="input-group">
                 <label for="password">Parolă</label>
-                <input type="password" id="password" placeholder="Introdu parola" required>
+                <input type="password" id="password" placeholder="••••••••" required>
             </div>
             
-            <button type="submit">Autentificare</button>
+            <button type="submit">Intră în cont</button>
         </form>
 
         <div id="errorMessage" class="error-message">
-            Nume de utilizator sau parolă incorectă!
+            Date de autentificare incorecte!
         </div>
     </div>
 
     <script>
         document.getElementById('loginForm').addEventListener('submit', function(event) {
-            // Prevenim comportamentul default de refresh al paginii la submit
             event.preventDefault();
 
-            // Preluăm valorile din input-uri
             const user = document.getElementById('username').value.trim().toLowerCase();
             const pass = document.getElementById('password').value.trim();
             const errorDiv = document.getElementById('errorMessage');
 
-            // Ascundem mesajul de eroare în cazul în care era afișat de la o încercare anterioară
             errorDiv.style.display = 'none';
 
-            // Logica de rutare în funcție de rol
+            // Logica rămâne aceeași!
             if (user === 'cetatean' && pass === '1234') {
-                // Redirecționare către pagina colegei tale
                 window.location.href = 'index.html';
-                
             } else if (user === 'politie' && pass === 'admin') {
-                // Redirecționare către Dashboard-ul autorităților
                 window.location.href = 'indexInstitutie.html';
-                
             } else {
-                // Afișăm eroarea dacă datele nu se potrivesc
                 errorDiv.style.display = 'block';
             }
         });

@@ -3,184 +3,225 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UrbanPulse - Command Center Poliție</title>
+    <title>City Glow - Command Center</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #121212; color: #ffffff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
+        body { 
+            background-color: #261132; 
+            background-image: radial-gradient(circle at top right, #3d1b54, #261132);
+            color: #ffffff; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
 
-        /* HEADER */
-        header { background-color: #1e1e1e; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; }
-        header h1 { font-size: 24px; font-weight: 600; letter-spacing: 1px; }
-        header h1 span { color: #00e676; }
-        .status-badge { background-color: #ff4d4d; color: #121212; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; transition: 0.3s; }
-        .logout-btn { background: none; border: 1px solid #ff4d4d; color: #ff4d4d; padding: 5px 15px; border-radius: 6px; cursor: pointer; text-decoration: none; margin-left: 15px; }
-        .logout-btn:hover { background-color: #ff4d4d; color: white; }
+        /* HEADER UNITAR */
+        header { 
+            padding: 20px 40px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .logo-section { display: flex; align-items: center; gap: 12px; }
+        .logo-circle { background: rgba(255, 255, 255, 0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        
+        .nav-right { display: flex; align-items: center; gap: 20px; }
+        #liveBadge { 
+            padding: 6px 18px; 
+            border-radius: 50px; 
+            font-size: 12px; 
+            font-weight: bold; 
+            text-transform: uppercase;
+            background-color: rgba(255, 77, 77, 0.2); 
+            border: 1px solid rgba(255, 77, 77, 0.4);
+            color: #ff6b6b;
+        }
+        .logout-link { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px; transition: 0.3s; }
+        .logout-link:hover { color: white; }
 
-        /* MAIN LAYOUT */
-        .dashboard-container { display: flex; flex: 1; overflow: hidden; }
+        /* DASHBOARD LAYOUT */
+        .main-content { display: flex; flex: 1; overflow: hidden; padding: 25px; gap: 25px; }
 
-        /* SIDEBAR (Panoul de control) */
-        .sidebar { width: 350px; background-color: #181818; padding: 20px; overflow-y: auto; border-right: 1px solid #333; }
-        .card { background-color: #242424; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .card h3 { font-size: 16px; color: #aaa; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        /* SIDEBAR / CARDS */
+        .sidebar { width: 380px; display: flex; flex-direction: column; gap: 20px; }
+        
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 28px;
+            padding: 25px;
+        }
 
-        /* TRAFIC STATS */
-        #incidentText { font-family: monospace; font-size: 15px; color: #00e676; white-space: pre-line; line-height: 1.5; }
+        .glass-card h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); margin-bottom: 15px; }
 
-        /* SEMAFOARE */
-        .traffic-light-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .light-box { background-color: #111; padding: 5px 10px; border-radius: 10px; display: flex; gap: 5px; }
-        .mini { display: inline-block; width: 20px; height: 20px; border-radius: 50%; opacity: 0.2; transition: 0.2s; }
-        .mini.red { background-color: #ff4d4d; }
-        .mini.yellow { background-color: #ffea00; }
-        .mini.green { background-color: #00e676; }
-        .mini.active { opacity: 1; box-shadow: 0 0 10px currentColor; }
+        /* STATS & TEXT */
+        #incidentText { font-size: 16px; color: #fff; line-height: 1.6; font-weight: 300; }
 
-        /* INCIDENTE */
-        .incident-alert { display: none; background-color: rgba(255, 77, 77, 0.1); border: 1px solid #ff4d4d; padding: 15px; border-radius: 8px; margin-bottom: 10px; animation: pulse 2s infinite; }
-        .incident-alert h4 { color: #ff4d4d; margin-bottom: 5px; }
-        .stat-row { display: flex; justify-content: space-between; font-size: 14px; margin-top: 5px; }
-        .stat-value { font-weight: bold; }
+        /* TRAFFIC LIGHTS VIZUAL */
+        .light-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .light-container { background: rgba(0,0,0,0.3); padding: 8px 15px; border-radius: 50px; display: flex; gap: 8px; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; opacity: 0.15; transition: 0.4s; }
+        .dot.red { background-color: #ff4d4d; }
+        .dot.yellow { background-color: #ffea00; }
+        .dot.green { background-color: #00e676; }
+        .dot.active { opacity: 1; box-shadow: 0 0 12px currentColor; }
 
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+        /* ALERTE INCIDENTE (Design unitar cu altele colegei) */
+        #incidentPin { 
+            display: none; 
+            background: rgba(255, 77, 77, 0.15); 
+            border: 1px solid rgba(255, 77, 77, 0.4); 
+            padding: 15px; 
+            border-radius: 20px; 
+            margin-top: 10px;
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+            0% { border-color: rgba(255, 77, 77, 0.4); }
+            50% { border-color: rgba(255, 77, 77, 1); }
+            100% { border-color: rgba(255, 77, 77, 0.4); }
         }
 
         /* MAP AREA */
-        .map-area { flex: 1; position: relative; }
+        .map-wrapper { flex: 1; border-radius: 32px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.15); position: relative; }
         #map { width: 100%; height: 100%; }
+
+        /* OVERLAY PE HARTĂ PENTRU ASPECT DARK PROFESIONAL */
+        .map-wrapper::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Urban<span>Pulse</span> | Command Center</h1>
-        <div>
-            <span id="liveBadge" class="status-badge">OFFLINE</span>
-            <a href="login.html" class="logout-btn">Deconectare</a>
+        <div class="logo-section">
+            <div class="logo-circle">CG</div>
+            <div>
+                <h2 style="font-size: 18px;">City Glow</h2>
+                <p style="font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase;">Command Center / Instituție</p>
+            </div>
+        </div>
+        <div class="nav-right">
+            <div id="liveBadge">AI Offline</div>
+            <a href="login.html" class="logout-link">Deconectare</a>
         </div>
     </header>
 
-    <div class="dashboard-container">
+    <div class="main-content">
         
         <div class="sidebar">
             
-            <div class="card">
-                <h3>Flux Trafic Live</h3>
-                <div id="incidentText">Așteptare date radar...</div>
+            <div class="glass-card">
+                <h3>Analiză Flux Trafic</h3>
+                <div id="incidentText">Sistemul așteaptă date de la camera de monitorizare...</div>
             </div>
 
-            <div class="card">
-                <h3>Sistem Semaforizare</h3>
-                <div class="traffic-light-row">
-                    <span>Axa 1 (Bd. Take Ionescu)</span>
-                    <div id="mapLightA" class="light-box">
-                        <i class="mini red active"></i><i class="mini yellow"></i><i class="mini green"></i>
+            <div class="glass-card">
+                <h3>Control Semaforizare</h3>
+                <div class="light-row">
+                    <span style="font-size: 13px;">Bd. Take Ionescu</span>
+                    <div id="mapLightA" class="light-container">
+                        <i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>
                     </div>
                 </div>
-                <div class="traffic-light-row">
-                    <span>Axa 2 (Str. Michelangelo)</span>
-                    <div id="mapLightB" class="light-box">
-                        <i class="mini red active"></i><i class="mini yellow"></i><i class="mini green"></i>
+                <div class="light-row">
+                    <span style="font-size: 13px;">Str. Michelangelo</span>
+                    <div id="mapLightB" class="light-container">
+                        <i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="card">
-                <h3>Triaj Incidente</h3>
-                <div id="incidentPin" class="incident-alert">
-                    <h4>🚨 ALARMĂ CRITICĂ</h4>
-                    <p>Incident detectat automat de senzorii stradali.</p>
+            <div class="glass-card" style="flex: 1;">
+                <h3>Management Incidente</h3>
+                <div id="incidentPin">
+                    <p style="color: #ff6b6b; font-weight: bold; font-size: 14px;">🚨 INCIDENT DETECTAT LIVE</p>
+                    <p style="font-size: 12px; margin-top: 5px; opacity: 0.8;">Analiza audio indică un posibil impact în nodul monitorizat.</p>
                 </div>
-                <div class="stat-row">
-                    <span>Incidente Active:</span>
-                    <span id="activeIncidents" class="stat-value text-red">0</span>
+                
+                <div style="margin-top: 20px; display: flex; justify-content: space-between; font-size: 14px;">
+                    <span style="opacity: 0.6;">Alarme active:</span>
+                    <span id="activeIncidents" style="font-weight: bold;">0</span>
                 </div>
-                <div class="stat-row">
-                    <span>Status Echipaje:</span>
-                    <span id="crewMini" class="stat-value">standby</span>
+                <div style="margin-top: 10px; display: flex; justify-content: space-between; font-size: 14px;">
+                    <span style="opacity: 0.6;">Status echipaje:</span>
+                    <span id="crewMini" style="font-weight: bold; text-transform: uppercase; font-size: 12px;">standby</span>
                 </div>
             </div>
 
         </div>
 
-        <div class="map-area">
+        <div class="map-wrapper">
             <div id="map"></div>
         </div>
 
     </div>
 
     <script>
-        // --- 1. INIȚIALIZARE HARTĂ ---
-        const map = L.map('map').setView([45.753, 21.232], 16);
+        // --- INIȚIALIZARE HARTĂ DARK MODE ---
+        const map = L.map('map', { zoomControl: false }).setView([45.753, 21.232], 16);
 
-        // Folosim o hartă "Dark Mode" potrivită pentru un Command Center
+        // Stil Dark Profesional pentru hartă (CartoDB Dark)
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors © CARTO'
+            attribution: '© City Glow UrbanPulse'
         }).addTo(map);
 
-        // Marker-ul intersecției
         const intersectionMarker = L.circle([45.753, 21.232], {
-            color: 'gray',
-            fillColor: '#888',
-            fillOpacity: 0.6,
-            radius: 25
+            color: 'rgba(255,255,255,0.3)',
+            fillColor: '#ffffff',
+            fillOpacity: 0.2,
+            radius: 30
         }).addTo(map);
-        
-        intersectionMarker.bindPopup("<b>Nod Trafic 1</b><br>Sistem Offline");
 
-        // --- 2. CONEXIUNEA CU AI-UL PYTHON ---
+        // --- CONEXIUNE WEBSOCKET ---
         const socket = new WebSocket('ws://localhost:8765');
 
         socket.onopen = function(e) {
-            console.log("[City Glow] Conectat cu succes la AI-ul Video!");
-            document.getElementById("liveBadge").innerText = "LIVE (Conectat)";
-            document.getElementById("liveBadge").style.backgroundColor = "#00e676";
+            document.getElementById("liveBadge").innerText = "Sistem AI Live";
+            document.getElementById("liveBadge").style.backgroundColor = "rgba(0, 230, 118, 0.2)";
+            document.getElementById("liveBadge").style.borderColor = "rgba(0, 230, 118, 0.4)";
+            document.getElementById("liveBadge").style.color = "#00e676";
         };
 
         socket.onmessage = function(event) {
-            const dateLive = JSON.parse(event.data);
-            console.log("Date primite: ", dateLive);
+            const data = JSON.parse(event.data);
 
-            // A. Trafic pe benzi
-            document.getElementById("incidentText").innerText = 
-                `Banda 1: ${dateLive.objects_b1} vehicule identificate\n` + 
-                `Banda 2: ${dateLive.objects_b2} vehicule identificate`;
+            // Update text trafic
+            document.getElementById("incidentText").innerHTML = 
+                `Banda 1: <span style="color:#00e676; font-weight:bold">${data.objects_b1}</span> vehicule<br>` +
+                `Banda 2: <span style="color:#00e676; font-weight:bold">${data.objects_b2}</span> vehicule`;
 
-            // B. Semafoare pe interfață și pe hartă
-            if (dateLive.state === "1") {
-                // Banda 1 e Verde, Banda 2 e Roșu
-                document.getElementById("mapLightA").innerHTML = '<i class="mini red"></i><i class="mini yellow"></i><i class="mini green active"></i>';
-                document.getElementById("mapLightB").innerHTML = '<i class="mini red active"></i><i class="mini yellow"></i><i class="mini green"></i>';
-                
-                intersectionMarker.setStyle({color: '#00e676', fillColor: '#00e676'});
-                intersectionMarker.setPopupContent("<b>Nod Trafic 1</b><br>Trafic fluidizat (Banda 1)");
+            // Update Semafoare
+            if (data.state === "1") {
+                document.getElementById("mapLightA").innerHTML = '<i class="dot red"></i><i class="dot yellow"></i><i class="dot green active"></i>';
+                document.getElementById("mapLightB").innerHTML = '<i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>';
+                intersectionMarker.setStyle({color: '#00e676', fillColor: '#00e676', fillOpacity: 0.4});
             } else {
-                // Banda 1 e Roșu, Banda 2 e Verde
-                document.getElementById("mapLightA").innerHTML = '<i class="mini red active"></i><i class="mini yellow"></i><i class="mini green"></i>';
-                document.getElementById("mapLightB").innerHTML = '<i class="mini red"></i><i class="mini yellow"></i><i class="mini green active"></i>';
-                
-                intersectionMarker.setStyle({color: '#ffea00', fillColor: '#ffea00'});
-                intersectionMarker.setPopupContent("<b>Nod Trafic 1</b><br>Trafic fluidizat (Banda 2)");
+                document.getElementById("mapLightA").innerHTML = '<i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>';
+                document.getElementById("mapLightB").innerHTML = '<i class="dot red"></i><i class="dot yellow"></i><i class="dot green active"></i>';
+                intersectionMarker.setStyle({color: '#ffea00', fillColor: '#ffea00', fillOpacity: 0.4});
             }
 
-            // C. Incidente
-            if (dateLive.incident === true) {
+            // Update Incidente
+            if (data.incident === true) {
                 document.getElementById("incidentPin").style.display = "block";
                 document.getElementById("activeIncidents").innerText = "1";
-                document.getElementById("crewMini").innerText = dateLive.crew_status || "DISPECERIZAT";
+                document.getElementById("crewMini").innerText = data.crew_status || "În deplasare";
                 document.getElementById("crewMini").style.color = "#ff4d4d";
-                
-                // Opțional: Facem cercul roșu pulsant dacă e incident
-                intersectionMarker.setStyle({color: '#ff4d4d', fillColor: '#ff4d4d'});
-                intersectionMarker.setPopupContent("<b>Nod Trafic 1</b><br>🚨 INCIDENT DETECTAT");
+                intersectionMarker.setStyle({color: '#ff4d4d', fillColor: '#ff4d4d', fillOpacity: 0.6});
             } else {
                 document.getElementById("incidentPin").style.display = "none";
                 document.getElementById("activeIncidents").innerText = "0";
@@ -189,13 +230,10 @@
             }
         };
 
-        socket.onclose = function(event) {
-            console.log("[City Glow] Conexiunea s-a întrerupt.");
-            document.getElementById("liveBadge").innerText = "OFFLINE";
-            document.getElementById("liveBadge").style.backgroundColor = "#ff4d4d";
-            document.getElementById("incidentText").innerText = "Conexiune pierdută...";
-            
-            intersectionMarker.setStyle({color: 'gray', fillColor: '#888'});
+        socket.onclose = function() {
+            document.getElementById("liveBadge").innerText = "AI Offline";
+            document.getElementById("liveBadge").style.backgroundColor = "rgba(255, 77, 77, 0.2)";
+            document.getElementById("liveBadge").style.color = "#ff4d4d";
         };
     </script>
 </body>
