@@ -7,16 +7,26 @@ import math
 import requests
 import threading
 from collections import defaultdict
+import math
+import requests
+import threading
+from collections import defaultdict
 
 model = YOLO('yolov8n.pt')
+cap = cv2.VideoCapture(0)
 cap = cv2.VideoCapture(0)
 
 # Zonele
 roi_banda_1 = np.array([[10, 50], [280, 50], [280, 430], [10, 430]], np.int32)   
 roi_centru  = np.array([[285, 120], [355, 120], [355, 360], [285, 360]], np.int32) 
 roi_banda_2 = np.array([[360, 50], [630, 50], [630, 430], [360, 430]], np.int32) 
+# Zonele
+roi_banda_1 = np.array([[10, 50], [280, 50], [280, 430], [10, 430]], np.int32)   
+roi_centru  = np.array([[285, 120], [355, 120], [355, 360], [285, 360]], np.int32) 
+roi_banda_2 = np.array([[360, 50], [630, 50], [630, 430], [360, 430]], np.int32) 
 
 try:
+    arduino = serial.Serial('COM4', 9600, timeout=0.1, write_timeout=0.1)
     arduino = serial.Serial('COM4', 9600, timeout=0.1, write_timeout=0.1)
     time.sleep(2)
     arduino.write(b'N') 
@@ -92,12 +102,22 @@ while cap.isOpened():
     timp_curent = time.time()
     results = model.track(frame, persist=True, stream=True, classes=[0, 67])
     
+    timp_curent = time.time()
+    results = model.track(frame, persist=True, stream=True, classes=[0, 67])
+    
     masini_banda_1 = 0
     masini_banda_2 = 0
+    masini_centru = 0
     masini_centru = 0
 
     for r in results:
         boxes = r.boxes
+        if boxes.id is not None:
+            track_ids = boxes.id.int().cpu().tolist()
+        else:
+            track_ids = [-1] * len(boxes)
+
+        for box, track_id in zip(boxes, track_ids):
         if boxes.id is not None:
             track_ids = boxes.id.int().cpu().tolist()
         else:
@@ -156,6 +176,7 @@ while cap.isOpened():
 
     cv2.polylines(frame, [roi_banda_1], isClosed=True, color=(0, 255, 0), thickness=2)
     cv2.polylines(frame, [roi_centru], isClosed=True, color=(255, 0, 255), thickness=2) 
+    cv2.polylines(frame, [roi_centru], isClosed=True, color=(255, 0, 255), thickness=2) 
     cv2.polylines(frame, [roi_banda_2], isClosed=True, color=(255, 165, 0), thickness=2)
 
     if timp_curent - timp_ultimul_raport_trafic >= INTERVAL_RAPORTARE_TRAFIC:
@@ -168,11 +189,15 @@ while cap.isOpened():
 
     secunde_trecute = timp_curent - timp_ultima_schimbare
     stare_dorita = stare_curenta 
+    stare_dorita = stare_curenta 
 
     if secunde_trecute >= TIMP_VERDE_MAXIM:
         stare_dorita = '2' if stare_curenta == '1' else '1'
+        stare_dorita = '2' if stare_curenta == '1' else '1'
     elif secunde_trecute >= TIMP_VERDE_MINIM:
         if stare_curenta == '1':
+            if masini_banda_1 == 0 and masini_banda_2 > 0: stare_dorita = '2'
+            elif masini_banda_2 > masini_banda_1 + 1: stare_dorita = '2'
             if masini_banda_1 == 0 and masini_banda_2 > 0: stare_dorita = '2'
             elif masini_banda_2 > masini_banda_1 + 1: stare_dorita = '2'
         elif stare_curenta == '2':
@@ -199,14 +224,22 @@ while cap.isOpened():
     cv2.putText(frame, f"B1: {masini_banda_1}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
     cv2.putText(frame, f"Centru: {masini_centru}", (260, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
     cv2.putText(frame, f"B2: {masini_banda_2}", (480, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 165, 0), 2)
+    cv2.putText(frame, f"B1: {masini_banda_1}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    cv2.putText(frame, f"Centru: {masini_centru}", (260, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
+    cv2.putText(frame, f"B2: {masini_banda_2}", (480, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 165, 0), 2)
 
     if stare_sistem == '1':
+    if stare_sistem == '1':
         cv2.putText(frame, "VERDE: B1 | ROSU: B2", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    elif stare_sistem == '2':
     elif stare_sistem == '2':
         cv2.putText(frame, "ROSU: B1 | VERDE: B2", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 165, 0), 2)
     elif stare_sistem == 'BLOCAT':
         cv2.putText(frame, "URGENTA: AMBELE ROSU", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+    elif stare_sistem == 'BLOCAT':
+        cv2.putText(frame, "URGENTA: AMBELE ROSU", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
         
+    cv2.imshow("UrbanPulse - Intersectie", frame)
     cv2.imshow("UrbanPulse - Intersectie", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
