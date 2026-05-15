@@ -39,32 +39,34 @@ viteze_curente = {}
 # --- SETĂRI API (ALERTE ȘI MONETIZARE) ---
 # =======================================================
 API_ALERTE_URL = "http://localhost:5000/api/alerte"
-API_TRAFIC_URL = "http://localhost:5000/api/trafic" # Endpoint-ul colegului de la DB
+API_TRAFIC_URL = "http://localhost:5000/api/trafic" 
 
-# Variabile pentru monetizare
 vehicule_unice_b1 = set()
 vehicule_unice_b2 = set()
 timp_ultimul_raport_trafic = time.time()
-INTERVAL_RAPORTARE_TRAFIC = 10.0 # Trimitem date la DB o dată la 10 secunde (bun pt demo)
-ID_INTERSECTIE = "Intersectie_Centru_HackTM" # Numele acestei machete
+INTERVAL_RAPORTARE_TRAFIC = 10.0 
+ID_INTERSECTIE = "Intersectie_Centru_HackTM" 
 
-def trimite_alerta_api(id_obiect, viteza, scor):
+def trimite_alerta_api(id_obiect, viteza, scor, center_x, center_y):
     payload = {
+        "id_intersectie": ID_INTERSECTIE,
+        "tip_senzor": "VIDEO",
         "id_obiect": id_obiect,
         "viteza_kmh": round(viteza, 2),
         "probabilitate_accident": round(scor, 2),
+        "locatie_x": center_x, 
+        "locatie_y": center_y,
         "timestamp": time.time()
     }
     try:
         requests.post(API_ALERTE_URL, json=payload, timeout=2)
-        print(f"🚨 [ALERTA] Accident! ID: {id_obiect} | Risc: {payload['probabilitate_accident']}%")
+        print(f"🚨 [ALERTA VIDEO] Risc: {payload['probabilitate_accident']}% la coordonatele ({center_x}, {center_y})")
     except Exception as e:
         pass
 
 def trimite_date_monetizare(volum_b1, volum_b2):
-    """Trimite datele de volum catre baza de date a colegului"""
     if volum_b1 == 0 and volum_b2 == 0:
-        return # Nu consumam resurse de retea daca nu a trecut nicio masina
+        return 
         
     payload = {
         "id_intersectie": ID_INTERSECTIE,
@@ -105,22 +107,21 @@ while cap.isOpened():
             x1, y1, x2, y2 = int(box.xyxy[0][0]), int(box.xyxy[0][1]), int(box.xyxy[0][2]), int(box.xyxy[0][3])
             center_x, center_y = int((x1 + x2) / 2), int((y1 + y2) / 2)
 
-            # Numărare pentru Semafor (în timp real) + Colectare Date pentru Baza de Date
             if cv2.pointPolygonTest(roi_centru, (center_x, center_y), False) > 0:
                 masini_centru += 1
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2) 
             elif cv2.pointPolygonTest(roi_banda_1, (center_x, center_y), False) > 0:
                 masini_banda_1 += 1
-                if track_id != -1: vehicule_unice_b1.add(track_id) # Salvam masina ca fiind vazuta pe B1
+                if track_id != -1: vehicule_unice_b1.add(track_id) 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
             elif cv2.pointPolygonTest(roi_banda_2, (center_x, center_y), False) > 0:
                 masini_banda_2 += 1
-                if track_id != -1: vehicule_unice_b2.add(track_id) # Salvam masina ca fiind vazuta pe B2
+                if track_id != -1: vehicule_unice_b2.add(track_id) 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 165, 0), 2)
             else:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (100, 100, 100), 2)
 
-            # Viteză și accidente
+            # --- AICI ERA PROBLEMA (Liniile lipsa au fost adaugate) ---
             if track_id != -1:
                 istoric = istoric_trasee[track_id]
                 istoric.append((center_x, center_y, timp_curent))
@@ -136,16 +137,17 @@ while cap.isOpened():
                     
                     if timp_scurs > 0:
                         viteza_pixeli_sec = distanta_pixeli / timp_scurs
-                        viteza_estimata = viteza_pixeli_sec * 0.15 
+                        
+                        viteza_estimata = viteza_pixeli_sec * 0.3 
                         viteza_anterioara = viteze_curente.get(track_id, viteza_estimata)
                         
-                        if viteza_anterioara > 30 and viteza_estimata < 5:
+                        if viteza_anterioara > 10 and viteza_estimata < 3:
                             scor_accident = 85.0 
-                        elif viteza_anterioara > 15 and viteza_estimata < 2:
+                        elif viteza_anterioara > 5 and viteza_estimata < 1:
                             scor_accident = 50.0 
                             
                         if scor_accident > 40:
-                            threading.Thread(target=trimite_alerta_api, args=(track_id, viteza_anterioara, scor_accident)).start()
+                            threading.Thread(target=trimite_alerta_api, args=(track_id, viteza_anterioara, scor_accident, center_x, center_y)).start()
                             cv2.putText(frame, "⚠️ ACCIDENT!", (x1, y1 - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
                         viteze_curente[track_id] = viteza_estimata
@@ -156,22 +158,14 @@ while cap.isOpened():
     cv2.polylines(frame, [roi_centru], isClosed=True, color=(255, 0, 255), thickness=2) 
     cv2.polylines(frame, [roi_banda_2], isClosed=True, color=(255, 165, 0), thickness=2)
 
-    # =======================================================
-    # --- LOGICA: RAPORTARE TRAFIC CĂTRE BAZA DE DATE ---
-    # =======================================================
     if timp_curent - timp_ultimul_raport_trafic >= INTERVAL_RAPORTARE_TRAFIC:
-        # Daca a trecut intervalul, trimitem datele folosind un fir de executie separat
         vol_b1 = len(vehicule_unice_b1)
         vol_b2 = len(vehicule_unice_b2)
-        
         threading.Thread(target=trimite_date_monetizare, args=(vol_b1, vol_b2)).start()
-        
-        # Resetam cronometrul si golim listele de masini pentru a numara din nou in urmatoarele 10 sec
         timp_ultimul_raport_trafic = timp_curent
         vehicule_unice_b1.clear()
         vehicule_unice_b2.clear()
 
-    # --- LOGICA: SCHIMBARE LA TERMEN + ANTI-SPAM ---
     secunde_trecute = timp_curent - timp_ultima_schimbare
     stare_dorita = stare_curenta 
 
@@ -196,15 +190,11 @@ while cap.isOpened():
             stare_curenta = stare_dorita
             stare_sistem = stare_curenta
             timp_ultima_schimbare = timp_curent
-            
             if arduino is not None:
-                try:
-                    arduino.write(b'N' if stare_sistem == '1' else b'E')
+                try: arduino.write(b'N' if stare_sistem == '1' else b'E')
                 except Exception: pass
 
-    # --- AFIȘARE INTERFAȚĂ ---
     timp_ramas = max(0, int(TIMP_VERDE_MAXIM - secunde_trecute))
-    
     cv2.putText(frame, f"Timp: {timp_ramas}s", (280, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
     cv2.putText(frame, f"B1: {masini_banda_1}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
     cv2.putText(frame, f"Centru: {masini_centru}", (260, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
