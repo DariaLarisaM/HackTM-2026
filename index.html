@@ -105,7 +105,7 @@
     </main>
 
     <script>
-        const centerPos = [45.7453, 21.2359];
+        const centerPos = [45.74534, 21.23590]; // Sincronizat la coordonatele exacte de la Județean
         const map = L.map('map').setView(centerPos, 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
@@ -147,7 +147,7 @@
         function calculateRoute() {
             if (routing) map.removeControl(routing);
             let waypoints = [startPoint];
-            if (isIncident) waypoints.push(L.latLng(45.7490, 21.2420)); // Ocolire
+            if (isIncident) waypoints.push(L.latLng(45.7490, 21.2420)); // Ocolire automată prin nod safe
             waypoints.push(endPoint);
 
             routing = L.Routing.control({
@@ -157,7 +157,11 @@
                 createMarker: () => null, show: false
             }).addTo(map);
 
-            routing.on('routesfound', (e) => {
+            routingControlEvents(routing);
+        }
+
+        function routingControlEvents(control) {
+            control.on('routesfound', (e) => {
                 const r = e.routes[0];
                 document.getElementById('valTime').innerText = Math.round(r.summary.totalTime / 60) + " min";
                 document.getElementById('valDist').innerText = (r.summary.totalDistance / 1000).toFixed(1) + " km";
@@ -173,7 +177,6 @@
             });
         }
 
-        // Adaptare Socket unificat pentru primire date
         const socket = new WebSocket('ws://localhost:8765');
         socket.onopen = () => {
             const badge = document.getElementById('liveBadge');
@@ -182,10 +185,13 @@
             badge.style.borderColor = "#00e676";
             badge.style.color = "#00e676";
         };
+
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
+            
+            // Verificăm atât status_update clasic cât și noul tip accident_event unificat
             const verde = data.state === "V" || data.state === "1";
-            isIncident = data.incident === true;
+            const accidentInZona = (data.incident === true || data.type === "accident_event");
 
             document.getElementById('hero-red').classList.toggle('active', !verde);
             document.getElementById('hero-green').classList.toggle('active', verde);
@@ -194,20 +200,28 @@
             const txt = document.getElementById('traficTxt');
             const box = document.getElementById('traficBox');
 
-            if (isIncident) {
+            if (accidentInZona) {
+                if (!isIncident) {
+                    isIncident = true;
+                    if (startPoint && endPoint) calculateRoute();
+                }
                 dot.style.background = 'var(--danger)';
                 txt.innerText = "Accident / Rută Deviată";
                 box.style.borderColor = 'var(--danger)';
                 box.style.background = 'rgba(255,74,95,0.1)';
                 document.getElementById('incidentAlert').style.display = 'block';
+                
+                // Zona devine roșie la accident
                 intersectionMarker.setStyle({ color: 'var(--danger)', fillOpacity: 0.4 });
-                if (startPoint && endPoint) calculateRoute();
-            } else {
+            } else if (data.incident === false) {
+                isIncident = false;
                 dot.style.background = 'var(--green)';
                 txt.innerText = verde ? "Circulație Fluidă" : "Așteptare Semafor";
                 box.style.borderColor = 'var(--green)';
                 box.style.background = 'rgba(121,224,143,0.1)';
                 document.getElementById('incidentAlert').style.display = 'none';
+                
+                // Resetare culoare inițială roz
                 intersectionMarker.setStyle({ color: 'var(--pink)', fillOpacity: 0.2 });
             }
         };
