@@ -37,17 +37,17 @@ istoric_trasee = defaultdict(lambda: [])
 viteze_curente = {}
 API_URL = "http://localhost:5000/api/alerte"
 
+# --- SINGURA MODIFICARE AICI: TRIMITEM PE BUNE CĂTRE DISPECER ---
 def trimite_alerta_api(id_obiect, viteza, scor):
-    payload = {
-        "id_obiect": id_obiect,
-        "viteza_kmh": round(viteza, 2),
-        "probabilitate_accident": round(scor, 2),
-        "timestamp": time.time()
-    }
     try:
-        print(f"📡 [API MOCK] Alerta accident! ID: {id_obiect} | Risc: {payload['probabilitate_accident']}%")
+        requests.post(API_URL, json={
+            "sursa": "video",
+            "probabilitate_accident": round(scor, 2)
+        })
+        print(f"📡 [VIDEO] Alerta accident trimisă la Dispecer! ID: {id_obiect}")
     except Exception as e:
-        pass
+        print("⚠️ Nu mă pot conecta la Dispecer (server.py)!")
+# ----------------------------------------------------------------
 
 print("Apasă 'q' pe video pentru ieșire.")
 
