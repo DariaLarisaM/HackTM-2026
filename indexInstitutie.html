@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbanPulse - Command Center Poliție</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #121212; color: #ffffff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        /* HEADER */
+        header { background-color: #1e1e1e; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; }
+        header h1 { font-size: 24px; font-weight: 600; letter-spacing: 1px; }
+        header h1 span { color: #00e676; }
+        .status-badge { background-color: #ff4d4d; color: #121212; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; transition: 0.3s; }
+        .logout-btn { background: none; border: 1px solid #ff4d4d; color: #ff4d4d; padding: 5px 15px; border-radius: 6px; cursor: pointer; text-decoration: none; margin-left: 15px; }
+        .logout-btn:hover { background-color: #ff4d4d; color: white; }
+
+        /* MAIN LAYOUT */
+        .dashboard-container { display: flex; flex: 1; overflow: hidden; }
+
+        /* SIDEBAR (Panoul de control) */
+        .sidebar { width: 350px; background-color: #181818; padding: 20px; overflow-y: auto; border-right: 1px solid #333; }
+        .card { background-color: #242424; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .card h3 { font-size: 16px; color: #aaa; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+
+        /* TRAFIC STATS */
+        #incidentText { font-family: monospace; font-size: 15px; color: #00e676; white-space: pre-line; line-height: 1.5; }
+
+        /* SEMAFOARE */
+        .traffic-light-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .light-box { background-color: #111; padding: 5px 10px; border-radius: 10px; display: flex; gap: 5px; }
+        .mini { display: inline-block; width: 20px; height: 20px; border-radius: 50%; opacity: 0.2; transition: 0.2s; }
+        .mini.red { background-color: #ff4d4d; }
+        .mini.yellow { background-color: #ffea00; }
+        .mini.green { background-color: #00e676; }
+        .mini.active { opacity: 1; box-shadow: 0 0 10px currentColor; }
+
+        /* INCIDENTE */
+        .incident-alert { display: none; background-color: rgba(255, 77, 77, 0.1); border: 1px solid #ff4d4d; padding: 15px; border-radius: 8px; margin-bottom: 10px; animation: pulse 2s infinite; }
+        .incident-alert h4 { color: #ff4d4d; margin-bottom: 5px; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 14px; margin-top: 5px; }
+        .stat-value { font-weight: bold; }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+        }
+
+        /* MAP AREA */
+        .map-area { flex: 1; position: relative; }
+        #map { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Urban<span>Pulse</span> | Command Center</h1>
+        <div>
+            <span id="liveBadge" class="status-badge">OFFLINE</span>
+            <a href="login.html" class="logout-btn">Deconectare</a>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        
+        <div class="sidebar">
+            
+            <div class="card">
+                <h3>Flux Trafic Live</h3>
+                <div id="incidentText">Așteptare date radar...</div>
+            </div>
+
+            <div class="card">
+                <h3>Sistem Semaforizare</h3>
+                <div class="traffic-light-row">
+                    <span>Axa 1 (Bd. Take Ionescu)</span>
+                    <div id="mapLightA" class="light-box">
+                        <i class="mini red active"></i><i class="mini yellow"></i><i class="mini green"></i>
+                    </div>
+                </div>
+                <div class="traffic-light-row">
+                    <span>Axa 2 (Str. Michelangelo)</span>
+                    <div id="mapLightB" class="light-box">
+                        <i class="mini red active"></i><i class="mini yellow"></i><i class="mini green"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Triaj Incidente</h3>
+                <div id="incidentPin" class="incident-alert">
+                    <h4>🚨 ALARMĂ CRITICĂ</h4>
+                    <p>Incident detectat automat de senzorii stradali.</p>
+                </div>
+                <div class="stat-row">
+                    <span>Incidente Active:</span>
+                    <span id="activeIncidents" class="stat-value text-red">0</span>
+                </div>
+                <div class="stat-row">
+                    <span>Status Echipaje:</span>
+                    <span id="crewMini" class="stat-value">standby</span>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="map-area">
+            <div id="map"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. INIȚIALIZARE HARTĂ ---
+        const map = L.map('map').setView([45.753, 21.232], 16);
+
+        // Folosim o hartă "Dark Mode" potrivită pentru un Command Center
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors © CARTO'
+        }).addTo(map);
+
+        // Marker-ul intersecției
+        const intersectionMarker = L.circle([45.753, 21.232], {
+            color: 'gray',
+            fillColor: '#888',
+            fillOpacity: 0.6,
+            radius: 25
+        }).addTo(map);
+        
+        intersectionMarker.bindPopup("<b>Nod Trafic 1</b><br>Sistem Offline");
+
+        // --- 2. CONEXIUNEA CU AI-UL PYTHON ---
+        const socket = new WebSocket('ws://localhost:8765');
+
+        socket.onopen = function(e) {
+            console.log("[City Glow] Conectat cu succes la AI-ul Video!");
+            document.getElementById("liveBadge").innerText = "LIVE (Conectat)";
+            document.getElementById("liveBadge").style.backgroundColor = "#00e676";
+        };
+
+        socket.onmessage = function(event) {
+            const dateLive = JSON.parse(event.data);
+            console.log("Date primite: ", dateLive);
+
+            // A. Trafic pe benzi
+            document.getElementById("incidentText").innerText = 
+                `Banda 1: ${dateLive.objects_b1} vehicule identificate\n` + 
+                `Banda 2: ${dateLive.objects_b2} vehicule identificate`;
+
+            // B. Semafoare pe interfață și pe hartă
+            if (dateLive.state === "1") {
+                // Banda 1 e Verde, Banda 2 e Roșu
+                document.getElementById("mapLightA").innerHTML = '<i class="mini red"></i><i class="mini yellow"></i><i class="mini green active"></i>';
+                document.getElementById("mapLightB").innerHTML = '<i class="mini red active"></i><i class="mini yellow"></i><i class="mini green"></i>';
+                
+                intersectionMarker.setStyle({color: '#00e676', fillColor: '#00e676'});
+                intersectionMarker.setPopupContent("<b>Nod Trafic 1</b><br>Trafic fluidizat (Banda 1)");
+            } else {
+                // Banda 1 e Roșu, Banda 2 e Verde
+                document.getElementById("mapLightA").innerHTML = '<i class="mini red active"></i><i class="mini yellow"></i><i class="mini green"></i>';
+                document.getElementById("mapLightB").innerHTML = '<i class="mini red"></i><i class="mini yellow"></i><i class="mini green active"></i>';
+                
+                intersectionMarker.setStyle({color: '#ffea00', fillColor: '#ffea00'});
+                intersectionMarker.setPopupContent("<b>Nod Trafic 1</b><br>Trafic fluidizat (Banda 2)");
+            }
+
+            // C. Incidente
+            if (dateLive.incident === true) {
+                document.getElementById("incidentPin").style.display = "block";
+                document.getElementById("activeIncidents").innerText = "1";
+                document.getElementById("crewMini").innerText = dateLive.crew_status || "DISPECERIZAT";
+                document.getElementById("crewMini").style.color = "#ff4d4d";
+                
+                // Opțional: Facem cercul roșu pulsant dacă e incident
+                intersectionMarker.setStyle({color: '#ff4d4d', fillColor: '#ff4d4d'});
+                intersectionMarker.setPopupContent("<b>Nod Trafic 1</b><br>🚨 INCIDENT DETECTAT");
+            } else {
+                document.getElementById("incidentPin").style.display = "none";
+                document.getElementById("activeIncidents").innerText = "0";
+                document.getElementById("crewMini").innerText = "standby";
+                document.getElementById("crewMini").style.color = "white";
+            }
+        };
+
+        socket.onclose = function(event) {
+            console.log("[City Glow] Conexiunea s-a întrerupt.");
+            document.getElementById("liveBadge").innerText = "OFFLINE";
+            document.getElementById("liveBadge").style.backgroundColor = "#ff4d4d";
+            document.getElementById("incidentText").innerText = "Conexiune pierdută...";
+            
+            intersectionMarker.setStyle({color: 'gray', fillColor: '#888'});
+        };
+    </script>
+</body>
+</html>

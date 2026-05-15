@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbanPulse - Autentificare</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #121212;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .login-box {
+            background-color: #1e1e1e;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-box h2 {
+            margin-bottom: 25px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .login-box h2 span {
+            color: #00e676; /* Accent verde pentru "Pulse" */
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #333;
+            background-color: #2a2a2a;
+            color: white;
+            border-radius: 6px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            border-color: #00e676;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #00e676;
+            color: #121212;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #00c853;
+        }
+
+        .error-message {
+            color: #ff4d4d;
+            background-color: rgba(255, 77, 77, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-size: 14px;
+            display: none; /* Ascuns implicit */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-box">
+        <h2>Urban<span>Pulse</span></h2>
+        
+        <form id="loginForm">
+            <div class="input-group">
+                <label for="username">Utilizator</label>
+                <input type="text" id="username" placeholder="ex: cetatean sau politie" required>
+            </div>
+            
+            <div class="input-group">
+                <label for="password">Parolă</label>
+                <input type="password" id="password" placeholder="Introdu parola" required>
+            </div>
+            
+            <button type="submit">Autentificare</button>
+        </form>
+
+        <div id="errorMessage" class="error-message">
+            Nume de utilizator sau parolă incorectă!
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            // Prevenim comportamentul default de refresh al paginii la submit
+            event.preventDefault();
+
+            // Preluăm valorile din input-uri
+            const user = document.getElementById('username').value.trim().toLowerCase();
+            const pass = document.getElementById('password').value.trim();
+            const errorDiv = document.getElementById('errorMessage');
+
+            // Ascundem mesajul de eroare în cazul în care era afișat de la o încercare anterioară
+            errorDiv.style.display = 'none';
+
+            // Logica de rutare în funcție de rol
+            if (user === 'cetatean' && pass === '1234') {
+                // Redirecționare către pagina colegei tale
+                window.location.href = 'index.html';
+                
+            } else if (user === 'politie' && pass === 'admin') {
+                // Redirecționare către Dashboard-ul autorităților
+                window.location.href = 'indexInstitutie.html';
+                
+            } else {
+                // Afișăm eroarea dacă datele nu se potrivesc
+                errorDiv.style.display = 'block';
+            }
+        });
+    </script>
+
+</body>
+</html>

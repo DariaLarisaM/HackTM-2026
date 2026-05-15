@@ -2,13 +2,33 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 import serial
-import time
+import time # Adaugă asta sus la importuri
+
+# ... (restul codului de inițializare) ...
+
+timp_ultima_trimitere = 0 # Variabilă nouă înainte de bucla while
+
 
 model = YOLO('yolov8n.pt')
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
 roi_banda_1 = np.array([[10, 50], [300, 50], [300, 430], [10, 430]], np.int32)   
 roi_banda_2 = np.array([[340, 50], [630, 50], [630, 430], [340, 430]], np.int32) 
+
+while cap.isOpened():
+    # ... (aici e codul tău YOLO care numără mașinile) ...
+
+    timp_curent = time.time()
+    
+    # Trimitem datele prin WebSocket DOAR dacă a trecut 1 secundă de la ultima trimitere
+    if timp_curent - timp_ultima_trimitere >= 1.0:
+        
+        # Aici e funcția ta de trimitere pe care o folosești deja (ex: sio.emit sau requests)
+        # trimite_date_catre_frontend(masini_b1, masini_b2)
+        
+        timp_ultima_trimitere = timp_curent # Resetăm cronometrul
+
+    # ... (restul codului cu cv2.imshow) ...
 
 try:
     arduino = serial.Serial('COM3', 9600, timeout=0.1, write_timeout=0.1)
