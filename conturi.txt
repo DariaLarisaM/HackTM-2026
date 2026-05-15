@@ -1,0 +1,3 @@
+# utilizator|parola|pagina_redirect
+cetatean|1234|index.html
+politie|admin|indexInstitutie.html

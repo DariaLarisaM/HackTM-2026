@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>City Glow - Autentificare</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+body{background-color:#261132;background-image:radial-gradient(circle at top right,#3d1b54,#261132);color:white;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:24px}
+.login-box{background-color:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);padding:50px 40px;border-radius:32px;width:100%;max-width:420px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.logo-container{display:flex;align-items:center;justify-content:center;gap:15px;margin-bottom:36px}
+.logo-circle{background-color:rgba(255,255,255,.2);width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;letter-spacing:1px}
+.logo-text{text-align:left}.logo-text h1{font-size:22px;font-weight:700;margin-bottom:2px}.logo-text p{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.6)}
+.input-group{margin-bottom:20px;text-align:left}.input-group label{display:block;margin-bottom:8px;font-size:14px;font-weight:500;color:rgba(255,255,255,.8);margin-left:5px}
+.input-group input{width:100%;padding:16px 20px;background-color:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.1);color:white;border-radius:16px;font-size:15px;outline:none;transition:border-color .3s,background-color .3s}
+.input-group input:focus{border-color:rgba(255,255,255,.5);background-color:rgba(0,0,0,.3)}
+button{width:100%;padding:16px;background-color:rgba(255,255,255,.2);color:white;border:1px solid rgba(255,255,255,.4);border-radius:50px;font-size:16px;font-weight:bold;cursor:pointer;transition:all .3s ease;margin-top:20px}
+button:hover{background-color:white;color:#5d2570}
+.message{padding:12px;border-radius:12px;margin-top:20px;font-size:14px;display:none;text-align:left;line-height:1.4}
+.message.error{display:block;color:#ffb3b3;background-color:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3)}
+.message.ok{display:block;color:#caffd1;background-color:rgba(121,224,143,.12);border:1px solid rgba(121,224,143,.35)}
+.hint{margin-top:18px;font-size:12px;line-height:1.45;color:rgba(255,255,255,.45)}
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="logo-container">
+    <div class="logo-circle">CG</div>
+    <div class="logo-text"><h1>City Glow</h1><p>Portal Autentificare</p></div>
+  </div>
+  <form id="loginForm">
+    <div class="input-group"><label for="username">Nume utilizator</label><input type="text" id="username" placeholder="ex: cetatean sau politie" required autocomplete="off"></div>
+    <div class="input-group"><label for="password">Parolă</label><input type="password" id="password" placeholder="••••••••" required></div>
+    <button type="submit">Intră în cont</button>
+  </form>
+  <div id="message" class="message"></div>
+  <div class="hint">Conturile sunt în <b>conturi.txt</b>, iar loginul folosește aceeași listă local pentru redirecționare sigură.</div>
+</div>
+<script>
+const accounts = [
+  { user: "cetatean", pass: "1234", redirect: "index.html" },
+  { user: "cetățean", pass: "1234", redirect: "index.html" },
+  { user: "politie", pass: "admin", redirect: "indexInstitutie.html" },
+  { user: "poliție", pass: "admin", redirect: "indexInstitutie.html" }
+];
+
+function normalizeText(value){
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function showMessage(text, type = "error"){
+  const message = document.getElementById("message");
+  message.textContent = text;
+  message.className = "message " + type;
+}
+
+function loginUser(){
+  const userInput = normalizeText(document.getElementById("username").value);
+  const passInput = document.getElementById("password").value.trim();
+
+  const account = accounts.find(item =>
+    normalizeText(item.user) === userInput && item.pass === passInput
+  );
+
+  if(!account){
+    showMessage("Date de autentificare incorecte. Încearcă: cetatean / 1234 sau politie / admin.");
+    return;
+  }
+
+  showMessage("Autentificare reușită. Se deschide platforma...", "ok");
+
+  setTimeout(() => {
+    window.location.href = account.redirect;
+  }, 250);
+}
+
+document.getElementById("loginForm").addEventListener("submit", function(event){
+  event.preventDefault();
+  loginUser();
+});
+</script>
+</body>
+</html>
