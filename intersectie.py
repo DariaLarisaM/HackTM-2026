@@ -19,7 +19,6 @@ roi_banda_2 = np.array([[360, 50], [630, 50], [630, 430], [360, 430]], np.int32)
 try:
     arduino = serial.Serial('COM4', 9600, timeout=0.1, write_timeout=0.1)
     time.sleep(2)
-    # REZOLVAREA PROBLEMEI 2: Sincronizam Arduino la prima rulare (ii dam Verde pe Banda 1)
     arduino.write(b'N') 
     print("✅ Conectat la Arduino!")
 except Exception:
@@ -27,15 +26,27 @@ except Exception:
     print("⚠️ Rulam FARA hardware.")
 
 stare_curenta = '1' 
-stare_sistem = '1'  # Poate fi '1', '2' sau 'BLOCAT'
+stare_sistem = '1'  
 timp_ultima_schimbare = time.time()
 
 TIMP_VERDE_MAXIM = 10.0 
-TIMP_VERDE_MINIM = 5.0  
+TIMP_VERDE_MINIM = 3.0  
 
 istoric_trasee = defaultdict(lambda: [])
 viteze_curente = {}
-API_URL = "http://localhost:5000/api/alerte"
+
+# =======================================================
+# --- SETĂRI API (ALERTE ȘI MONETIZARE) ---
+# =======================================================
+API_ALERTE_URL = "http://localhost:5000/api/alerte"
+API_TRAFIC_URL = "http://localhost:5000/api/trafic" # Endpoint-ul colegului de la DB
+
+# Variabile pentru monetizare
+vehicule_unice_b1 = set()
+vehicule_unice_b2 = set()
+timp_ultimul_raport_trafic = time.time()
+INTERVAL_RAPORTARE_TRAFIC = 10.0 # Trimitem date la DB o dată la 10 secunde (bun pt demo)
+ID_INTERSECTIE = "Intersectie_Centru_HackTM" # Numele acestei machete
 
 def trimite_alerta_api(id_obiect, viteza, scor):
     payload = {
@@ -45,9 +56,29 @@ def trimite_alerta_api(id_obiect, viteza, scor):
         "timestamp": time.time()
     }
     try:
-        print(f"📡 [API MOCK] Alerta accident! ID: {id_obiect} | Risc: {payload['probabilitate_accident']}%")
+        # requests.post(API_ALERTE_URL, json=payload, timeout=2)
+        print(f"🚨 [ALERTA] Accident! ID: {id_obiect} | Risc: {payload['probabilitate_accident']}%")
     except Exception as e:
         pass
+
+def trimite_date_monetizare(volum_b1, volum_b2):
+    """Trimite datele de volum catre baza de date a colegului"""
+    if volum_b1 == 0 and volum_b2 == 0:
+        return # Nu consumam resurse de retea daca nu a trecut nicio masina
+        
+    payload = {
+        "id_intersectie": ID_INTERSECTIE,
+        "timestamp": time.time(),
+        "date_benzi": [
+            {"nume_banda": "Banda_1_Nord", "volum_masini_noi": volum_b1},
+            {"nume_banda": "Banda_2_Est", "volum_masini_noi": volum_b2}
+        ]
+    }
+    try:
+        # requests.post(API_TRAFIC_URL, json=payload, timeout=2)
+        print(f"💰 [MONETIZARE DB] Am raportat trafic nou: {volum_b1} pe B1 | {volum_b2} pe B2")
+    except Exception as e:
+        print("Eroare trimitere date trafic:", e)
 
 print("Apasă 'q' pe video pentru ieșire.")
 
@@ -74,15 +105,17 @@ while cap.isOpened():
             x1, y1, x2, y2 = int(box.xyxy[0][0]), int(box.xyxy[0][1]), int(box.xyxy[0][2]), int(box.xyxy[0][3])
             center_x, center_y = int((x1 + x2) / 2), int((y1 + y2) / 2)
 
-            # Numărare
+            # Numărare pentru Semafor (în timp real) + Colectare Date pentru Baza de Date
             if cv2.pointPolygonTest(roi_centru, (center_x, center_y), False) > 0:
                 masini_centru += 1
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2) 
             elif cv2.pointPolygonTest(roi_banda_1, (center_x, center_y), False) > 0:
                 masini_banda_1 += 1
+                if track_id != -1: vehicule_unice_b1.add(track_id) # Salvam masina ca fiind vazuta pe B1
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
             elif cv2.pointPolygonTest(roi_banda_2, (center_x, center_y), False) > 0:
                 masini_banda_2 += 1
+                if track_id != -1: vehicule_unice_b2.add(track_id) # Salvam masina ca fiind vazuta pe B2
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 165, 0), 2)
             else:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (100, 100, 100), 2)
@@ -123,11 +156,25 @@ while cap.isOpened():
     cv2.polylines(frame, [roi_centru], isClosed=True, color=(255, 0, 255), thickness=2) 
     cv2.polylines(frame, [roi_banda_2], isClosed=True, color=(255, 165, 0), thickness=2)
 
+    # =======================================================
+    # --- LOGICA: RAPORTARE TRAFIC CĂTRE BAZA DE DATE ---
+    # =======================================================
+    if timp_curent - timp_ultimul_raport_trafic >= INTERVAL_RAPORTARE_TRAFIC:
+        # Daca a trecut intervalul, trimitem datele folosind un fir de executie separat
+        vol_b1 = len(vehicule_unice_b1)
+        vol_b2 = len(vehicule_unice_b2)
+        
+        threading.Thread(target=trimite_date_monetizare, args=(vol_b1, vol_b2)).start()
+        
+        # Resetam cronometrul si golim listele de masini pentru a numara din nou in urmatoarele 10 sec
+        timp_ultimul_raport_trafic = timp_curent
+        vehicule_unice_b1.clear()
+        vehicule_unice_b2.clear()
+
     # --- LOGICA: SCHIMBARE LA TERMEN + ANTI-SPAM ---
     secunde_trecute = timp_curent - timp_ultima_schimbare
     stare_dorita = stare_curenta 
 
-    # 1. Calculam cand vrem sa schimbam starea
     if secunde_trecute >= TIMP_VERDE_MAXIM:
         stare_dorita = '2' if stare_curenta == '1' else '1'
     elif secunde_trecute >= TIMP_VERDE_MINIM:
@@ -138,17 +185,14 @@ while cap.isOpened():
             if masini_banda_2 == 0 and masini_banda_1 > 0: stare_dorita = '1'
             elif masini_banda_1 > masini_banda_2 + 1: stare_dorita = '1'
 
-    # 2. Executam tranzitia DOAR in momentul schimbarii
     if stare_dorita != stare_curenta:
         if masini_centru > 0:
-            # Centrul e ocupat exact in momentul schimbarii! Blocati intersectia!
             if stare_sistem != 'BLOCAT':
                 stare_sistem = 'BLOCAT'
                 if arduino is not None:
-                    try: arduino.write(b'B') # Trimis o singura data
+                    try: arduino.write(b'B') 
                     except Exception: pass
         else:
-            # Centrul este liber, putem finaliza schimbarea
             stare_curenta = stare_dorita
             stare_sistem = stare_curenta
             timp_ultima_schimbare = timp_curent
