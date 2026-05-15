@@ -56,7 +56,7 @@ def trimite_alerta_api(id_obiect, viteza, scor):
         "timestamp": time.time()
     }
     try:
-        # requests.post(API_ALERTE_URL, json=payload, timeout=2)
+        requests.post(API_ALERTE_URL, json=payload, timeout=2)
         print(f"🚨 [ALERTA] Accident! ID: {id_obiect} | Risc: {payload['probabilitate_accident']}%")
     except Exception as e:
         pass
@@ -75,7 +75,7 @@ def trimite_date_monetizare(volum_b1, volum_b2):
         ]
     }
     try:
-        # requests.post(API_TRAFIC_URL, json=payload, timeout=2)
+        requests.post(API_TRAFIC_URL, json=payload, timeout=2)
         print(f"💰 [MONETIZARE DB] Am raportat trafic nou: {volum_b1} pe B1 | {volum_b2} pe B2")
     except Exception as e:
         print("Eroare trimitere date trafic:", e)
