@@ -1,26 +1,37 @@
 import cv2
 import numpy as np
-from ultralytics import YOLO
 import serial
 import time
-import math
 import requests
 import threading
-from collections import defaultdict
-import io
 
-# 1. Incarcam modelul YOLO (varianta Small, mai buna pt jucarii)
-# Incarcam modelul Nano, care este cel mai rapid pentru CPU
-model = YOLO('yolov8n.pt')
-cap = cv2.VideoCapture(2)
+# --- CONFIGURARE CULORI DEMO (HSV) ---
+# Dimensiunea minimă a mașinuței în pixeli
+arie_minima_obiect = 500 
+
+# 1. Roșu (se întinde pe două capete în spectrul HSV)
+rosu_low_1 = np.array([0, 100, 100])
+rosu_high_1 = np.array([10, 255, 255])
+rosu_low_2 = np.array([160, 100, 100])
+rosu_high_2 = np.array([180, 255, 255])
+
+# 2. Roz
+roz_low = np.array([140, 50, 50])
+roz_high = np.array([170, 255, 255])
+
+# 3. Galben
+galben_low = np.array([20, 100, 100])
+galben_high = np.array([35, 255, 255])
+
+# --- Setup Cameră ---
+cap = cv2.VideoCapture(2) # Schimbă la 2 dacă ai camera externă conectată pe 2
 
 # Zonele tale - Configurație în formă de CRUCE
-# Centrul imaginii este la (320, 240) cu un drum lat de 200px
+roi_banda_1 = np.array([[220, 10], [420, 10], [420, 470], [220, 470]], np.int32) 
+roi_centru  = np.array([[220, 140], [420, 140], [420, 340], [220, 340]], np.int32) 
+roi_banda_2 = np.array([[10, 140], [630, 140], [630, 340], [10, 340]], np.int32) 
 
-roi_banda_1 = np.array([[220, 10], [420, 10], [420, 470], [220, 470]], np.int32)  # Axa Verticală (ex: Nord-Sud)
-roi_centru  = np.array([[220, 140], [420, 140], [420, 340], [220, 340]], np.int32) # Intersecția (Mijlocul exact)
-roi_banda_2 = np.array([[10, 140], [630, 140], [630, 340], [10, 340]], np.int32)  # Axa Orizontală (ex: Est-Vest)
-
+# --- Setup Arduino & State ---
 try:
     arduino = serial.Serial('COM4', 9600, timeout=0.1, write_timeout=0.1)
     time.sleep(2)
@@ -33,81 +44,21 @@ except Exception:
 stare_curenta = '1' 
 stare_sistem = '1'  
 timp_ultima_schimbare = time.time()
-
 TIMP_VERDE_MAXIM = 10.0 
 TIMP_VERDE_MINIM = 3.0  
 
-istoric_trasee = defaultdict(lambda: [])
-viteze_curente = {}
-
 # --- SETĂRI API ---
-API_ALERTE_URL = "http://localhost:5000/api/alerte"
 API_TRAFIC_URL = "http://localhost:5000/api/trafic" 
-API_BUFFER_URL = "http://localhost:5000/api/accident-buffer"
 
-# ---> NOU: LOGICA DE BUFFER CIRCULAR PENTRU 10 POZE
-buffer_imagini = []
-buffer_lock = threading.Lock()
-cadru_curent_global = None
-
-def ruleaza_buffer_circular():
-    """Rulează asincron: stochează 1 cadru la fiecare 0.5s. Când depășește 10, îl elimină pe cel mai vechi."""
-    global cadru_curent_global, buffer_imagini
-    while cap.isOpened():
-        time.sleep(0.5)
-        if cadru_curent_global is not None:
-            with buffer_lock:
-                success, encoded_img = cv2.imencode('.jpg', cadru_curent_global)
-                if success:
-                    buffer_imagini.append(encoded_img.tobytes())
-                    if len(buffer_imagini) > 10:
-                        buffer_imagini.pop(0) # Elimină cea mai veche imagine (poza 11)
-
-# Pornim managementul bufferului în fundal
-threading.Thread(target=ruleaza_buffer_circular, daemon=True).start()
-
-def trimite_buffer_imagini():
-    """Trimite pachetul de 10 imagini din buffer către server."""
-    with buffer_lock:
-        if len(buffer_imagini) == 0:
-            return
-        payload_fisiere = []
-        for idx, img_bytes in enumerate(buffer_imagini):
-            payload_fisiere.append(('imagini', (f'cadru_{idx}.jpg', io.BytesIO(img_bytes), 'image/jpeg')))
-            
-    try:
-        requests.post(API_BUFFER_URL, files=payload_fisiere, timeout=4)
-        print("📸 [BUFFER] Toate cele 10 imagini secvențiale au fost trimise la server!")
-    except Exception as e:
-        print("⚠️ Eroare la trimiterea bufferului de imagini:", e)
-
-vehicule_unice_b1 = set()
-vehicule_unice_b2 = set()
+# Logica de monetizare simplificată pentru demo
+vehicule_detectate_b1 = 0
+vehicule_detectate_b2 = 0
 timp_ultimul_raport_trafic = time.time()
 INTERVAL_RAPORTARE_TRAFIC = 10.0 
-ID_INTERSECTIE = "Intersectie_Centru_HackTM" 
-
-def trimite_alerta_api(id_obiect, viteza, scor, center_x, center_y):
-    payload = {
-        "id_intersectie": ID_INTERSECTIE,
-        "tip_senzor": "VIDEO",
-        "id_obiect": id_obiect,
-        "viteza_kmh": round(viteza, 2),
-        "probabilitate_accident": round(scor, 2),
-        "locatie_x": center_x, 
-        "locatie_y": center_y,
-        "timestamp": time.time()
-    }
-    try:
-        requests.post(API_ALERTE_URL, json=payload, timeout=2)
-        print(f"🚨 [ALERTA VIDEO] Risc: {payload['probabilitate_accident']}% la coordonatele ({center_x}, {center_y})")
-    except Exception as e:
-        pass
+ID_INTERSECTIE = "Intersectie_Demo_Rapid" 
 
 def trimite_date_monetizare(volum_b1, volum_b2):
-    if volum_b1 == 0 and volum_b2 == 0:
-        return 
-        
+    if volum_b1 == 0 and volum_b2 == 0: return 
     payload = {
         "id_intersectie": ID_INTERSECTIE,
         "timestamp": time.time(),
@@ -117,109 +68,95 @@ def trimite_date_monetizare(volum_b1, volum_b2):
         ]
     }
     try:
-        requests.post(API_TRAFIC_URL, json=payload, timeout=2)
-        print(f"💰 [MONETIZARE DB] Am raportat trafic nou: {volum_b1} pe B1 | {volum_b2} pe B2")
-    except Exception as e:
-        print("Eroare trimitere date trafic:", e)
+        requests.post(API_TRAFIC_URL, json=payload, timeout=1)
+        print(f"💰 [MONETIZARE] Raportat trafic demo: {volum_b1} B1 | {volum_b2} B2")
+    except Exception: pass
 
-print("Apasă 'q' pe video pentru ieșire.")
+print("Apasă 'q' pentru ieșire. Demo Mode Activ (Color Detection pe fundal negru).")
 
+# ==========================================
+# BUCLA PRINCIPALĂ DE PROCESARE A IMAGINII
+# ==========================================
 while cap.isOpened():
     success, frame = cap.read()
-    if not success:
+    if not success: 
         break
+    
+    # Imaginea blurată ajută la reducerea zgomotului
+    blurred_frame = cv2.GaussianBlur(frame, (5, 5), 0)
+    # Convertim în spațiul de culoare HSV (esențial pentru detecția culorilor)
+    hsv_frame = cv2.cvtColor(blurred_frame, cv2.COLOR_BGR2HSV)
+
+    # --- 1. Creare Măști Culori ---
+    mask_r1 = cv2.inRange(hsv_frame, rosu_low_1, rosu_high_1)
+    mask_r2 = cv2.inRange(hsv_frame, rosu_low_2, rosu_high_2)
+    mask_rosu = cv2.bitwise_or(mask_r1, mask_r2)
+    
+    mask_roz = cv2.inRange(hsv_frame, roz_low, roz_high)
+    mask_galben = cv2.inRange(hsv_frame, galben_low, galben_high)
+
+    # --- 2. Găsire Contururi ---
+    contours_rosu, _ = cv2.findContours(mask_rosu, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_roz, _ = cv2.findContours(mask_roz, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_galben, _ = cv2.findContours(mask_galben, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    obiecte_detectate = [] # Listă de (x, y, w, h, tip_culoare)
+
+    # --- 3. Filtrare și Adăugare Obiecte ---
+    for cnt in contours_rosu:
+        if cv2.contourArea(cnt) > arie_minima_obiect:
+            x, y, w, h = cv2.boundingRect(cnt)
+            obiecte_detectate.append((x, y, w, h, "Rosie"))
+
+    for cnt in contours_roz:
+        if cv2.contourArea(cnt) > arie_minima_obiect:
+            x, y, w, h = cv2.boundingRect(cnt)
+            obiecte_detectate.append((x, y, w, h, "Roz"))
+
+    for cnt in contours_galben:
+        if cv2.contourArea(cnt) > arie_minima_obiect:
+            x, y, w, h = cv2.boundingRect(cnt)
+            obiecte_detectate.append((x, y, w, h, "Galbena"))
 
     timp_curent = time.time()
-    
-    # 2. Aici e locul corect pentru apelarea tracking-ului:
-    # Folosim setari agresive pentru viteza si detecții slabe
-    results = model.track(
-        frame, 
-        persist=True, 
-        stream=True, 
-        conf=0.05,               # Confidență minusculă: acceptă orice are măcar 5% șansă să fie obiect
-        iou=0.8,                 # Permite o grămadă de cutii suprapuse pe același obiect
-        vid_stride=1,            # Analizează fiecare cadru pentru reacție instantă
-        tracker="botsort.yaml"   
-    )
-    cadru_curent_global = frame.copy() # Salvăm o copie curată pentru buffer-ul circular
-    timp_curent = time.time()
-    results = model.track(frame, persist=True, stream=True, classes=[0, 67])
-    
     masini_banda_1 = 0
     masini_banda_2 = 0
     masini_centru = 0
 
-    for r in results:
-        boxes = r.boxes
-        if boxes.id is not None:
-            track_ids = boxes.id.int().cpu().tolist()
-        else:
-            track_ids = [-1] * len(boxes)
+    # --- 4. Logica de Intersecție ---
+    for (x, y, w, h, tip) in obiecte_detectate:
+        center_x, center_y = int(x + w/2), int(y + h/2)
+        color_box = (0, 255, 0) # Verde standard pt cutie
 
-        for box, track_id in zip(boxes, track_ids):
-            x1, y1, x2, y2 = int(box.xyxy[0][0]), int(box.xyxy[0][1]), int(box.xyxy[0][2]), int(box.xyxy[0][3])
-            center_x, center_y = int((x1 + x2) / 2), int((y1 + y2) / 2)
+        if cv2.pointPolygonTest(roi_centru, (center_x, center_y), False) > 0:
+            masini_centru += 1
+            color_box = (255, 0, 255) # Magenta pt centru
+        elif cv2.pointPolygonTest(roi_banda_1, (center_x, center_y), False) > 0:
+            masini_banda_1 += 1
+            vehicule_detectate_b1 += 1 
+            color_box = (0, 255, 0) # Verde pt B1
+        elif cv2.pointPolygonTest(roi_banda_2, (center_x, center_y), False) > 0:
+            masini_banda_2 += 1
+            vehicule_detectate_b2 += 1 
+            color_box = (255, 165, 0) # Portocaliu pt B2
+        
+        # Desenăm cutia și textul
+        cv2.rectangle(frame, (x, y), (x + w, y + h), color_box, 2)
+        cv2.putText(frame, f"{tip}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color_box, 2)
 
-            if cv2.pointPolygonTest(roi_centru, (center_x, center_y), False) > 0:
-                masini_centru += 1
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2) 
-            elif cv2.pointPolygonTest(roi_banda_1, (center_x, center_y), False) > 0:
-                masini_banda_1 += 1
-                if track_id != -1: vehicule_unice_b1.add(track_id) 
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            elif cv2.pointPolygonTest(roi_banda_2, (center_x, center_y), False) > 0:
-                masini_banda_2 += 1
-                if track_id != -1: vehicule_unice_b2.add(track_id) 
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 165, 0), 2)
-            else:
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (100, 100, 100), 2)
+    # --- 5. Desenare Zone ---
+    cv2.polylines(frame, [roi_banda_1], True, (0, 255, 0), 2)
+    cv2.polylines(frame, [roi_centru], True, (255, 0, 255), 2) 
+    cv2.polylines(frame, [roi_banda_2], True, (255, 165, 0), 2)
 
-            if track_id != -1:
-                istoric = istoric_trasee[track_id]
-                istoric.append((center_x, center_y, timp_curent))
-                if len(istoric) > 10: istoric.pop(0)
-
-                viteza_estimata = 0
-                scor_accident = 0
-
-                if len(istoric) >= 5:
-                    pct_vechi, pct_nou = istoric[0], istoric[-1]
-                    distanta_pixeli = math.sqrt((pct_nou[0] - pct_vechi[0])**2 + (pct_nou[1] - pct_vechi[1])**2)
-                    timp_scurs = pct_nou[2] - pct_vechi[2]
-                    
-                    if timp_scurs > 0:
-                        viteza_pixeli_sec = distanta_pixeli / timp_scurs
-                        viteza_estimata = viteza_pixeli_sec * 0.3 
-                        viteza_anterioara = viteze_curente.get(track_id, viteza_estimata)
-                        
-                        if viteza_anterioara > 10 and viteza_estimata < 3:
-                            scor_accident = 85.0 
-                        elif viteza_anterioara > 5 and viteza_estimata < 1:
-                            scor_accident = 50.0 
-                            
-                        if scor_accident > 40:
-                            threading.Thread(target=trimite_alerta_api, args=(track_id, viteza_anterioara, scor_accident, center_x, center_y)).start()
-                            # ---> NOU: LANSARE BUFFER IMAGINI LA DETECTIA ACCIDENTULUI
-                            threading.Thread(target=trimite_buffer_imagini).start()
-                            cv2.putText(frame, "⚠️ ACCIDENT!", (x1, y1 - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-
-                        viteze_curente[track_id] = viteza_estimata
-
-                cv2.putText(frame, f"ID:{track_id} | {int(viteza_estimata)}km/h", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
-    cv2.polylines(frame, [roi_banda_1], isClosed=True, color=(0, 255, 0), thickness=2)
-    cv2.polylines(frame, [roi_centru], isClosed=True, color=(255, 0, 255), thickness=2) 
-    cv2.polylines(frame, [roi_banda_2], isClosed=True, color=(255, 165, 0), thickness=2)
-
+    # --- 6. Raportare Monetizare ---
     if timp_curent - timp_ultimul_raport_trafic >= INTERVAL_RAPORTARE_TRAFIC:
-        vol_b1 = len(vehicule_unice_b1)
-        vol_b2 = len(vehicule_unice_b2)
-        threading.Thread(target=trimite_date_monetizare, args=(vol_b1, vol_b2)).start()
+        threading.Thread(target=trimite_date_monetizare, args=(vehicule_detectate_b1, vehicule_detectate_b2)).start()
         timp_ultimul_raport_trafic = timp_curent
-        vehicule_unice_b1.clear()
-        vehicule_unice_b2.clear()
+        vehicule_detectate_b1 = 0 
+        vehicule_detectate_b2 = 0
 
+    # --- 7. Logica Semafor ---
     secunde_trecute = timp_curent - timp_ultima_schimbare
     stare_dorita = stare_curenta 
 
@@ -248,6 +185,7 @@ while cap.isOpened():
                 try: arduino.write(b'N' if stare_sistem == '1' else b'E')
                 except Exception: pass
 
+    # --- 8. UI Info pe ecran ---
     timp_ramas = max(0, int(TIMP_VERDE_MAXIM - secunde_trecute))
     cv2.putText(frame, f"Timp: {timp_ramas}s", (280, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
     cv2.putText(frame, f"B1: {masini_banda_1}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
@@ -261,7 +199,7 @@ while cap.isOpened():
     elif stare_sistem == 'BLOCAT':
         cv2.putText(frame, "URGENTA: AMBELE ROSU", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
         
-    cv2.imshow("UrbanPulse - Intersectie", frame)
+    cv2.imshow("UrbanPulse - Demo Mode", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
