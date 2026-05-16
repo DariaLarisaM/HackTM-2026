@@ -198,8 +198,8 @@
 
         L.marker(coordsJude).addTo(map);
 
-        // --- CONEXIUNE WEBSOCKET ---
-        const socket = new WebSocket('ws://localhost:8765');
+        // --- CONEXIUNE WEBSOCKET CĂTRE SERVERUL FLASK ---
+        const socket = new WebSocket('ws://localhost:5000/'); // Portul corect al serverului tău Flask
 
         socket.onopen = function(e) {
             document.getElementById("liveBadge").innerText = "Sistem AI Live";
@@ -211,35 +211,31 @@
         socket.onmessage = function(event) {
             const data = JSON.parse(event.data);
 
-            // Update text live flux trafic din imagine
-            if (data.objects_b1 !== undefined) {
-                document.getElementById("incidentText").innerHTML = 
-                    `Banda 1: <span style="color:#00e676; font-weight:bold">${data.objects_b1}</span> vehicule<br>` +
-                    `Banda 2: <span style="color:#00e676; font-weight:bold">${data.objects_b2}</span> vehicule`;
+            // 1. UPDATE TRAFIC LIVE
+            if (data.type === "status_update") {
+                if (data.objects_b1 !== undefined) {
+                    document.getElementById("incidentText").innerHTML = 
+                        `Banda 1 (Take Ionescu): <span style="color:#00e676; font-weight:bold">${data.objects_b1}</span> vehicule<br>` +
+                        `Banda 2 (Michelangelo): <span style="color:#ffea00; font-weight:bold">${data.objects_b2}</span> vehicule`;
+                }
+
+                // 2. UPDATE SEMAFOR PE HARTĂ ȘI ÎN PANOU
+                if (data.state === "1") {
+                    document.getElementById("mapLightA").innerHTML = '<i class="dot red"></i><i class="dot yellow"></i><i class="dot green active"></i>';
+                    document.getElementById("mapLightB").innerHTML = '<i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>';
+                    intersectionMarker.setStyle({color: '#00e676', fillColor: '#00e676', fillOpacity: 0.4});
+                } else if (data.state === "2") {
+                    document.getElementById("mapLightA").innerHTML = '<i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>';
+                    document.getElementById("mapLightB").innerHTML = '<i class="dot red"></i><i class="dot yellow"></i><i class="dot green active"></i>';
+                    intersectionMarker.setStyle({color: '#ffea00', fillColor: '#ffea00', fillOpacity: 0.4});
+                } else if (data.state === "BLOCAT") {
+                    document.getElementById("mapLightA").innerHTML = '<i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>';
+                    document.getElementById("mapLightB").innerHTML = '<i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>';
+                    intersectionMarker.setStyle({color: '#ff4d4d', fillColor: '#ff4d4d', fillOpacity: 0.6});
+                }
             }
 
-            // Update Semafoare
-            if (data.state === "1") {
-                document.getElementById("mapLightA").innerHTML = '<i class="dot red"></i><i class="dot yellow"></i><i class="dot green active"></i>';
-                document.getElementById("mapLightB").innerHTML = '<i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>';
-                intersectionMarker.setStyle({color: '#00e676', fillColor: '#00e676', fillOpacity: 0.4});
-            } else if (data.state === "2") {
-                document.getElementById("mapLightA").innerHTML = '<i class="dot red active"></i><i class="dot yellow"></i><i class="dot green"></i>';
-                document.getElementById("mapLightB").innerHTML = '<i class="dot red"></i><i class="dot yellow"></i><i class="dot green active"></i>';
-                intersectionMarker.setStyle({color: '#ffea00', fillColor: '#ffea00', fillOpacity: 0.4});
-            }
-
-            // Update Stare Incidente generală (Reset)
-            if (data.incident === false) {
-                document.getElementById("incidentPin").style.display = "none";
-                document.getElementById("bufferLogBlock").style.display = "none";
-                document.getElementById("activeIncidents").innerText = "0";
-                document.getElementById("crewMini").innerText = "standby";
-                document.getElementById("crewMini").style.color = "white";
-                intersectionMarker.setStyle({color: 'rgba(255,255,255,0.3)', fillColor: '#ffffff', fillOpacity: 0.2});
-            }
-
-            // ---> MANAGEMENT EVENIMENT ACCIDENT MULTIMODAL + INJECTARE CELE 10 POZE
+            // 3. MANAGEMENT EVENIMENT ACCIDENT
             if (data.type === "accident_event") {
                 document.getElementById("incidentPin").style.display = "block";
                 document.getElementById("bufferLogBlock").style.display = "block";
@@ -248,10 +244,9 @@
                 document.getElementById("crewMini").style.color = "#ff4d4d";
                 intersectionMarker.setStyle({color: '#ff4d4d', fillColor: '#ff4d4d', fillOpacity: 0.6});
 
-                // Desenare imagini în interfață din fluxul Base64 primit de la server
-                const grid = document.getElementById("imgGrid");
-                grid.innerHTML = ''; // Resetăm bufferul vechi
                 if(data.images && data.images.length > 0) {
+                    const grid = document.getElementById("imgGrid");
+                    grid.innerHTML = ''; 
                     data.images.forEach((b64Str) => {
                         const img = document.createElement('img');
                         img.className = 'grid-img';
