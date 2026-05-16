@@ -14,10 +14,12 @@ import io
 model = YOLO('yolov8n.pt')
 cap = cv2.VideoCapture(2)
 
-# Zonele tale
-roi_banda_1 = np.array([[10, 50], [280, 50], [280, 430], [10, 430]], np.int32)   
-roi_centru  = np.array([[285, 120], [355, 120], [355, 360], [285, 360]], np.int32) 
-roi_banda_2 = np.array([[360, 50], [630, 50], [630, 430], [360, 430]], np.int32) 
+# Zonele tale - Configurație în formă de CRUCE
+# Centrul imaginii este la (320, 240) cu un drum lat de 200px
+
+roi_banda_1 = np.array([[220, 10], [420, 10], [420, 470], [220, 470]], np.int32)  # Axa Verticală (ex: Nord-Sud)
+roi_centru  = np.array([[220, 140], [420, 140], [420, 340], [220, 340]], np.int32) # Intersecția (Mijlocul exact)
+roi_banda_2 = np.array([[10, 140], [630, 140], [630, 340], [10, 340]], np.int32)  # Axa Orizontală (ex: Est-Vest)
 
 try:
     arduino = serial.Serial('COM4', 9600, timeout=0.1, write_timeout=0.1)
@@ -135,10 +137,10 @@ while cap.isOpened():
         frame, 
         persist=True, 
         stream=True, 
-        conf=0.10,               # Coboram si mai mult
-        iou=0.5,                 # Permitem suprapuneri mai mari ale box-urilor
-        vid_stride=2,            # TRUC: Proceseaza doar 1 din 2 cadre! Dubleaza FPS-ul automat.
-        tracker="botsort.yaml"   # Folosim BotSort, e mai bun pentru obiecte care stau pe loc sau au scor mic
+        conf=0.05,               # Confidență minusculă: acceptă orice are măcar 5% șansă să fie obiect
+        iou=0.8,                 # Permite o grămadă de cutii suprapuse pe același obiect
+        vid_stride=1,            # Analizează fiecare cadru pentru reacție instantă
+        tracker="botsort.yaml"   
     )
     cadru_curent_global = frame.copy() # Salvăm o copie curată pentru buffer-ul circular
     timp_curent = time.time()
